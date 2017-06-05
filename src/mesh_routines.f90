@@ -699,7 +699,17 @@ CONTAINS
               PARMETIS_OPTIONS(0)=1 !If zero, defaults are used, otherwise next two values are used
               PARMETIS_OPTIONS(1)=7 !Level of information to output
               PARMETIS_OPTIONS(2)=CMISS_RANDOM_SEEDS(1) !Seed for random number generator
-              
+
+
+              write(*,*) "my_computational_node_number: ",  my_computational_node_number, "element_distance: ",   ELEMENT_DISTANCE
+              write(*,*) "my_computational_node_number: ",  my_computational_node_number, "element_ptr", ELEMENT_PTR        
+              write(*,*) "my_computational_node_number: ",  my_computational_node_number, "element_index", ELEMENT_INDICIES
+
+
+
+
+
+
               !Call ParMETIS to calculate the partitioning of the mesh graph.
               CALL PARMETIS_PARTMESHKWAY(ELEMENT_DISTANCE,ELEMENT_PTR,ELEMENT_INDICIES,ELEMENT_WEIGHT,WEIGHT_FLAG,NUMBER_FLAG, &
                 & NUMBER_OF_CONSTRAINTS,NUMBER_OF_COMMON_NODES,DECOMPOSITION%NUMBER_OF_DOMAINS,TPWGTS,UBVEC,PARMETIS_OPTIONS, &
