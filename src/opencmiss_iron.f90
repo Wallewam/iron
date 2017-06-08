@@ -830,13 +830,31 @@ MODULE OpenCMISS_Iron
   END INTERFACE CMFE_DomainTopologyNOdeCheckExists
 
 
+  INTERFACE CMFE_GetSurroundingELements
 
+    MODULE  PROCEDURE CMFE_Get_Surrounding_Element
+
+  END INTERFACE CMFE_GetSurroundingELements
+
+  INTERFACE CMFE_GetElementNOdes
+
+    MODULE  PROCEDURE CMFE_Get_Element_NOdes
+
+  END INTERFACE CMFE_GetElementNOdes
+
+!  INTERFACE CMFE_GetSurroundingELementsINterface
+
+!    MODULE PROCEDURE CMFE_GetSurroundingELements
+
+!  END INTERFACE CMFE_GetSurroundingELementsINterface
 
   PUBLIC CMFE_BASIS_LAGRANGE_HERMITE_TP_TYPE,CMFE_BASIS_SIMPLEX_TYPE,CMFE_BASIS_SERENDIPITY_TYPE,CMFE_BASIS_AUXILLIARY_TYPE, &
     & CMFE_BASIS_B_SPLINE_TP_TYPE,CMFE_BASIS_FOURIER_LAGRANGE_HERMITE_TP_TYPE,CMFE_BASIS_EXTENDED_LAGRANGE_TP_TYPE
 
 
   PUBLIC cmfe_GeneratedMesh_Node_GetXIAndElement,cmfe_GeneratedMeshElementNOdesGetinterface,CMFE_DomainTopologyNOdeCheckExists
+
+  PUBLIC CMFE_GetSurroundingELements, CMFE_GetElementNOdes
 
   PUBLIC CMFE_BASIS_LINEAR_LAGRANGE_INTERPOLATION,CMFE_BASIS_QUADRATIC_LAGRANGE_INTERPOLATION, &
     & CMFE_BASIS_CUBIC_LAGRANGE_INTERPOLATION, &
@@ -6839,9 +6857,15 @@ MODULE OpenCMISS_Iron
     MODULE PROCEDURE cmfe_SolverEquations_BoundaryConditionsGetObj
   END INTERFACE cmfe_SolverEquations_BoundaryConditionsGet
 
+!  INTERFACE  cmfe_Decomposition_DecompositionWeightsSet
+!   MODULE PROCEDURE cmfe_Decomposition_DecompositionWeightsSet
+!  END INTERFACE cmfe_Decomposition_DecompositionWeightsSet
+
   PUBLIC CMFE_SOLVER_LINEAR_TYPE,CMFE_SOLVER_NONLINEAR_TYPE,CMFE_SOLVER_DYNAMIC_TYPE,CMFE_SOLVER_DAE_TYPE, &
     & CMFE_SOLVER_EIGENPROBLEM_TYPE, &
     & CMFE_SOLVER_OPTIMISER_TYPE
+
+  PUBLIC cmfe_Decomposition_DecompositionWeightsSet
 
   PUBLIC CMFE_SOLVER_CMISS_LIBRARY,CMFE_SOLVER_PETSC_LIBRARY,CMFE_SOLVER_MUMPS_LIBRARY,CMFE_SOLVER_SUPERLU_LIBRARY, &
     & CMFE_SOLVER_SPOOLES_LIBRARY,CMFE_SOLVER_UMFPACK_LIBRARY,CMFE_SOLVER_LUSOL_LIBRARY,CMFE_SOLVER_ESSL_LIBRARY, &
@@ -62729,6 +62753,98 @@ CONTAINS
  
   END SUBROUTINE CMFE_DOMAIN_TOPOLOGY_NODE_CHECK_EXISTS
 
+  ! the followng extracts the global id of element , surroudig a node
+  SUBROUTINE CMFE_Get_Surrounding_Element(Mesh, NodeIdx, ELementIdx, Err)
+
+
+    Type(CMFE_MeshType), INTENT(IN)  		   :: Mesh
+    INTEGER(INTG), ALLOCATABLE, INTENT(OUT)         :: ElementIdx(:)
+    INTEGER(INTG), INTENT(IN)                       :: NodeIdx
+    INTEGER(INTG), INTENT(OUT)                      :: Err
+
+   ! LOCAL VARIABLES
+
+    INTEGER(INTG)                                   :: NUmberOfSurroundingElements
+
+    NUmberOfSurroundingElements=SIZE(MESH%MESH%TOPOLOGY(1)%ptr%NOdes%Nodes(NodeIdx)%SurroundingELements(:))
+
+    ALLOCATE(ELementIdx(NUmberOfSurroundingElements))
+
+    ELementIdx(:) = MESH%MESH%TOPOLOGY(1)%ptr%NOdes%Nodes(NodeIdx)%SurroundingELements(:)
+
+    Err = 0 
+
+ 
+  END SUBROUTINE CMFE_Get_Surrounding_Element
+
+  ! the following subroutine extracts nodes of the global element idx
+
+  SUBROUTINE CMFE_Get_Element_NOdes(Mesh, ELementIdx, ElementNodes, Err)
+
+
+    Type(CMFE_MeshType), INTENT(IN)  		   :: Mesh
+    INTEGER(INTG), INTENT(IN)                      :: ElementIdx
+    INTEGER(INTG), INTENT(OUT) ,ALLOCATABLE        :: ElementNOdes(:)
+    INTEGER(INTG), INTENT(OUT)                     :: Err
+
+   ! LOCAL VARIABLES
+    INTEGER(INTG)                                  :: NUmberOfNOdes
+
+    ENTERS("CMFE_Get_Element_NOdes",err,error,*999)
+
+
+    NUmberOfNOdes=SIZE(MESH%MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(:))
+
+    ALLOCATE(ElementNodes(NUmberOfNOdes))
+
+    ElementNodes(:) = MESH%MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(:)
+
+    EXITS("CMFE_Get_Element_NOdes")
+    RETURN
+   
+999 ERRORSEXITS("CMFE_Get_Element_NOdes",err,error)
+    CALL cmfe_HandleError(err,error)
+    RETURN
+  END SUBROUTINE CMFE_Get_Element_NOdes
+!  SUBROUTINE CMFE_GetSurroundingELements
+
+   
+!  END SUBROUTINE CMFE_GetSurroundingELements
+
+
+!================================================================================================================================
+  !
+
+  !>Returns the type of a decomposition identified by an object.
+ SUBROUTINE cmfe_Decomposition_DecompositionWeightsSet(decomposition,TPWGT,UBVEC,ELEMENT_WEIGHT, & 
+   & ELEMENT_SET,NUMBER_OF_CONSTRAINTS,err)
+    !DLLEXPORT(cmfe_Decomposition_TypeGetObj)
+
+     !Argument variables
+   TYPE(cmfe_DecompositionType), INTENT(IN) :: decomposition !<The decomposition to get the type for.
+   INTEGER(INTG), INTENT(IN)                :: ELEMENT_WEIGHT(:), ELEMENT_SET(:)
+   REAL(DP),INTENT(IN)                      :: TPWGT(:), UBVEC(:)
+   INTEGER(INTG), INTENT(IN)                :: NUMBER_OF_CONSTRAINTS
+   INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+
+   !Local variables
+   ENTERS("cmfe_Decomposition_DecompositionWeightsSet",err,error,*999)
+
+   CALL DECOMPOSITION_WEIGHT_SET(decomposition%decomposition,&
+     & TPWGT, UBVEC, ELEMENT_WEIGHT, ELEMENT_SET,NUMBER_OF_CONSTRAINTS, err,error,*999)
+   
+   EXITS("cmfe_Decomposition_DecompositionWeightsSet")
+   RETURN
+   
+999 ERRORSEXITS("cmfe_Decomposition_DecompositionWeightsSet",err,error)
+   CALL cmfe_HandleError(err,error)
+   RETURN
+
+ END SUBROUTINE cmfe_Decomposition_DecompositionWeightsSet
+
+  !
+  !================================================================================================================================
+  !
 
   
 END MODULE OpenCMISS_Iron

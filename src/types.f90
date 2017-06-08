@@ -1063,6 +1063,11 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
   TYPE DECOMPOSITION_TYPE
     INTEGER(INTG) :: USER_NUMBER !<The user defined identifier for the domain decomposition. The user number must be unique.
     INTEGER(INTG) :: GLOBAL_NUMBER !<The global number of the domain decomposition in the list of domain decompositions for a particular mesh.
+    REAL(RP), ALLOCATABLE      :: TPWGT(:)                !mirzawd's contribution
+    REAL(RP), ALLOCATABLE      :: UBVEC(:)
+    INTEGER                    :: NUMBER_OF_CONSTRAINTS
+    INTEGER, ALLOCATABLE       :: ELEMENT_WEIGHT(:)
+    INTEGER, ALLOCATABLE       :: ELEMENT_SET(:)
     LOGICAL :: DECOMPOSITION_FINISHED !<Is .TRUE. if the decomposition has finished being created, .FALSE. if not.
     TYPE(DECOMPOSITIONS_TYPE), POINTER :: DECOMPOSITIONS !<A pointer to the decompositions for this decomposition.
     TYPE(MESH_TYPE), POINTER :: MESH !<A pointer to the mesh for this decomposition.
