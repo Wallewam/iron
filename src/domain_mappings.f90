@@ -224,7 +224,6 @@ CONTAINS
       NUMBER_INTERNAL=0   ! counters for my computational node
       NUMBER_BOUNDARY=0
       NUMBER_GHOST=0
-      
       ALLOCATE(ADJACENT_DOMAINS(0:DOMAIN_MAPPING%NUMBER_OF_DOMAINS-1,0:DOMAIN_MAPPING%NUMBER_OF_DOMAINS-1),STAT=ERR)
       IF(ERR/=0) CALL FlagError("Could not allocate adjacent domains.",ERR,ERROR,*999)
       ADJACENT_DOMAINS=0
@@ -233,6 +232,7 @@ CONTAINS
       DO global_number=1,DOMAIN_MAPPING%NUMBER_OF_GLOBAL
         !-------- If necessary, reset global domain index so that my computational node is in the first index position ------------
         !find out current domain index of my computational node
+
         MY_DOMAIN_INDEX=1
         DO domain_idx=2,DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(global_number)%NUMBER_OF_DOMAINS
           domain_no=DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(global_number)%DOMAIN_NUMBER(domain_idx)

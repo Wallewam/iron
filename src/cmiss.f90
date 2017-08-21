@@ -210,18 +210,24 @@ CONTAINS
     !Finalise the problems
     CALL PROBLEMS_FINALISE(err,error,*999)
     !Finalise the regions
+
     CALL REGIONS_FINALISE(err,error,*999)
     !Finalise the coordinate systems
+
     CALL COORDINATE_SYSTEMS_FINALISE(err,error,*999)
     !Finalise bases
+
     CALL BASES_FINALISE(err,error,*999)
     !Reset the signal handler
+
     CALL cmfe_ResetFatalHandler()
+
     !Finalise computational enviroment
     CALL COMPUTATIONAL_ENVIRONMENT_FINALISE(err,error,*999)
+
     !Finalise the base routines
     CALL BASE_ROUTINES_FINALISE(err,error,*999)
-     
+
     RETURN
 999 RETURN 1
     

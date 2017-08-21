@@ -427,6 +427,7 @@ MODULE TYPES
     INTEGER(INTG) :: numberOfSurroundingElements !<The number of elements surrounding the node in the mesh. Old CMISS name NENP(np,0,0:nr).
     INTEGER(INTG), POINTER :: surroundingElements(:) !<surroudingElements(localElementIdx). The global element number of the localElementIdx'th element that is surrounding the node. Old CMISS name NENP(np,nep,0:nr). \todo Change this to allocatable.
     LOGICAL :: boundaryNode !<Is .TRUE. if the mesh node is on the boundary of the mesh, .FALSE. if not.
+    INTEGER(INTG), ALLOCATABLE           :: surroundingNodes(:)
   END TYPE MeshNodeType
 
   !>Contains the information for the nodes of a mesh.
@@ -506,7 +507,7 @@ MODULE TYPES
     LOGICAL :: MESH_FINISHED !<Is .TRUE. if the mesh has finished being created, .FALSE. if not.
     TYPE(MESHES_TYPE), POINTER :: MESHES !<A pointer to the meshes for this mesh.
     TYPE(REGION_TYPE), POINTER :: REGION !<A pointer to the region containing the mesh. If the mesh is in an interface rather than a region then this pointer will be NULL and the interface pointer should be used.
-    TYPE(INTERFACE_TYPE), POINTER :: INTERFACE !<A pointer to the interface containing the mesh. If the mesh is in a region rather than an interface then this pointer will be NULL and the interface pointer should be used.
+    TYPE(INTERFACE_TYPE), POINTER :: INTERFACE !<A pointer to the interface containing the mesh. If the mesh is in a region rather than an interface then this pointer wFill be NULL and the interface pointer should be used.
     TYPE(GENERATED_MESH_TYPE), POINTER :: GENERATED_MESH !<A pointer to the generated mesh generate this mesh.
     INTEGER(INTG) :: NUMBER_OF_DIMENSIONS !<The number of dimensions (Xi directions) for this mesh.
     INTEGER(INTG) :: NUMBER_OF_COMPONENTS !<The number of mesh components in this mesh.
@@ -518,6 +519,7 @@ MODULE TYPES
     TYPE(MeshComponentTopologyPtrType), POINTER :: TOPOLOGY(:) !<TOPOLOGY(mesh_component_idx). A pointer to the topology mesh_component_idx'th mesh component. \todo Change to allocatable?
     TYPE(DECOMPOSITIONS_TYPE), POINTER :: DECOMPOSITIONS !<A pointer to the decompositions for this mesh.
     LOGICAL :: SURROUNDING_ELEMENTS_CALCULATE !<Boolean flag to determine whether surrounding elements should be calculated.
+    INTEGER(INTG)                :: NUMBER_OF_NODES
   END TYPE MESH_TYPE
 
   !>A buffer type to allow for an array of pointers to a MESH_TYPE.
@@ -1013,6 +1015,9 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
     LOGICAL :: BOUNDARY_ELEMENT !<Is .TRUE. if the element is on the boundary of the mesh for the domain, .FALSE. if not.
   END TYPE DECOMPOSITION_ELEMENT_TYPE
 
+
+
+
   !>Contains the topology information for the elements of a decomposition.
   TYPE DECOMPOSITION_ELEMENTS_TYPE
     TYPE(DECOMPOSITION_TYPE), POINTER :: DECOMPOSITION !<The pointer to the decomposition for this elements topology information.
@@ -1063,11 +1068,24 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
   TYPE DECOMPOSITION_TYPE
     INTEGER(INTG) :: USER_NUMBER !<The user defined identifier for the domain decomposition. The user number must be unique.
     INTEGER(INTG) :: GLOBAL_NUMBER !<The global number of the domain decomposition in the list of domain decompositions for a particular mesh.
-    REAL(RP), ALLOCATABLE      :: TPWGT(:)                !mirzawd's contribution
-    REAL(RP), ALLOCATABLE      :: UBVEC(:)
-    INTEGER                    :: NUMBER_OF_CONSTRAINTS
-    INTEGER, ALLOCATABLE       :: ELEMENT_WEIGHT(:)
-    INTEGER, ALLOCATABLE       :: ELEMENT_SET(:)
+    !===========================================================!
+    REAL(DP), ALLOCATABLE             :: TPWGT(:)                !mirzawd's contribution
+    REAL(RP), ALLOCATABLE             :: UBVEC(:)
+    INTEGER(INTG)                     :: NUMBER_OF_CONSTRAINTS
+    INTEGER(INTG) , ALLOCATABLE       :: ELEMENT_WEIGHT(:)
+    INTEGER(INTG) , ALLOCATABLE       :: ELEMENT_SET(:)
+    INTEGER(INTG) , ALLOCATABLE       :: NODE_SET(:)
+    INTEGER(INTG) , ALLOCATABLE       :: NODE_WEIGHT_SET(:)
+    LOGICAL                           :: NODE_BASED_DECOMPOSITION
+    INTEGER(INTG) , ALLOCATABLE       :: EDGES_TO_SET_WEIGHT_ON(:,:)  
+    INTEGER(INTG) , ALLOCATABLE       :: EDGE_WEIGHT(:)
+    INTEGER(INTG)                     :: NUMBER_OF_COMMON_NODES
+    INTEGER(INTG)                     :: WEIGHT_FLAG, NUM_FLAG
+    INTEGER(INTG), ALLOCATABLE        :: NODE_DOMAIN(:)
+    INTEGER(INTG), ALLOCATABLE        :: VTX_DIST(:)
+    INTEGER(INTG), ALLOCATABLE        :: XADJ(:), ADJNCY(:)
+    INTEGER(INTG), ALLOCATABLE        :: ADJWT(:)
+    ! =========================================================!
     LOGICAL :: DECOMPOSITION_FINISHED !<Is .TRUE. if the decomposition has finished being created, .FALSE. if not.
     TYPE(DECOMPOSITIONS_TYPE), POINTER :: DECOMPOSITIONS !<A pointer to the decompositions for this decomposition.
     TYPE(MESH_TYPE), POINTER :: MESH !<A pointer to the mesh for this decomposition.
@@ -1076,11 +1094,15 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
     INTEGER(INTG) :: NUMBER_OF_DOMAINS !<The number of domains that this decomposition contains.
     INTEGER(INTG) :: NUMBER_OF_EDGES_CUT !<For automatically calculated decompositions, the number of edges of the mesh dual graph that were cut for the composition. It provides an indication of the optimally of the automatic decomposition.
     INTEGER(INTG), ALLOCATABLE :: ELEMENT_DOMAIN(:) !<ELEMENT_DOMAIN(ne). The domain number that the ne'th global element is in for the decomposition. Note: the domain numbers start at 0 and go up to the NUMBER_OF_DOMAINS-1.
+
     TYPE(DECOMPOSITION_TOPOLOGY_TYPE), POINTER :: TOPOLOGY !<A pointer to the topology for this decomposition.
     TYPE(DOMAIN_PTR_TYPE), POINTER :: DOMAIN(:) !<DOMAIN(mesh_component_idx). A pointer to the domain for mesh component for the domain associated with the computational node. \todo Change this to allocatable???
     LOGICAL :: CALCULATE_FACES !<Boolean flag to determine whether faces should be calculated
     LOGICAL :: CALCULATE_LINES !<Boolean flag to determine whether lines should be calculated
   END TYPE DECOMPOSITION_TYPE
+
+
+
 
   !>A buffer type to allow for an array of pointers to a DECOMPOSITION_TYPE.
   TYPE DECOMPOSITION_PTR_TYPE
@@ -1373,6 +1395,16 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
   TYPE FIELD_PTR_TYPE
     TYPE(FIELD_TYPE), POINTER :: PTR !<The pointer to the field.  
   END TYPE FIELD_PTR_TYPE
+
+  TYPE COUPLED_DECOMPOSITION_TYPE !mirzawd
+    INTEGER(INTG)                                      :: USER_NUMBER, MESH_IDX
+    TYPE(FIELD_PTR_TYPE), ALLOCATABLE                  :: COUPLED_FIELDS(:)
+    INTEGER(INTG), ALLOCATABLE                         :: INTER_EDGES(:,:) 
+    REAL(RP), ALLOCATABLE                              :: COUPLED_MESH_COORDINATES(:,:) 
+    REAL(RP), ALLOCATABLE                              :: INTERFACE_MESH_COORDINATES(:,:)
+    INTEGER(INTG), ALLOCATABLE                         :: OLD_TO_NEW_VERTEX_MAPPING(:,:)      
+                                         
+  END TYPE COUPLED_DECOMPOSITION_TYPE
 
   !>Contains information on the fields defined on a region.
   TYPE FIELDS_TYPE

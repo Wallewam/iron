@@ -171,6 +171,7 @@ OBJECTS = $(OBJECT_DIR)/advection_equation_routines.o \
 	$(OBJECT_DIR)/data_projection_routines.o \
 	$(OBJECT_DIR)/diffusion_advection_diffusion_routines.o \
 	$(OBJECT_DIR)/diffusion_diffusion_routines.o \
+        $(OBJECT_DIR)/Routines.o \
 	$(OBJECT_DIR)/diffusion_equation_routines.o \
 	$(OBJECT_DIR)/distributed_matrix_vector.o \
 	$(OBJECT_DIR)/distributed_matrix_vector_IO.o \

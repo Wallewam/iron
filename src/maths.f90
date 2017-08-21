@@ -1390,7 +1390,9 @@ CONTAINS
     !Local variables
 
     ENTERS("INVERT_FULL_SP",ERR,ERROR,*999)
-
+      
+    print *, A
+   stop
     IF(SIZE(A,1)==SIZE(A,2)) THEN
       IF(SIZE(B,1)==SIZE(A,1).AND.SIZE(B,2)==SIZE(A,2)) THEN
         SELECT CASE(SIZE(A,1)) 
