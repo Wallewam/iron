@@ -427,7 +427,7 @@ MODULE TYPES
     INTEGER(INTG) :: numberOfSurroundingElements !<The number of elements surrounding the node in the mesh. Old CMISS name NENP(np,0,0:nr).
     INTEGER(INTG), POINTER :: surroundingElements(:) !<surroudingElements(localElementIdx). The global element number of the localElementIdx'th element that is surrounding the node. Old CMISS name NENP(np,nep,0:nr). \todo Change this to allocatable.
     LOGICAL :: boundaryNode !<Is .TRUE. if the mesh node is on the boundary of the mesh, .FALSE. if not.
-    INTEGER(INTG), ALLOCATABLE           :: surroundingNodes(:)
+    INTEGER(INTG), ALLOCATABLE :: surroundingNodes(:) !surroundingNodes(global_node_idx). GIves global node ids surrounding the node global_node_idx. 
   END TYPE MeshNodeType
 
   !>Contains the information for the nodes of a mesh.
@@ -1068,24 +1068,24 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
   TYPE DECOMPOSITION_TYPE
     INTEGER(INTG) :: USER_NUMBER !<The user defined identifier for the domain decomposition. The user number must be unique.
     INTEGER(INTG) :: GLOBAL_NUMBER !<The global number of the domain decomposition in the list of domain decompositions for a particular mesh.
-    !===========================================================!
-    REAL(DP), ALLOCATABLE             :: TPWGT(:)                !mirzawd's contribution
-    REAL(RP), ALLOCATABLE             :: UBVEC(:)
-    INTEGER(INTG)                     :: NUMBER_OF_CONSTRAINTS
-    INTEGER(INTG) , ALLOCATABLE       :: ELEMENT_WEIGHT(:)
+    REAL(DP), ALLOCATABLE             :: TPWGT(:)  !< An array that defines the work-load corresponding to each processor.              
+    REAL(RP), ALLOCATABLE             :: UBVEC(:)  !< Parameter used to define vetex weight imbalance. 
+    INTEGER(INTG)                     :: NUMBER_OF_CONSTRAINTS !< Parameters used to defined number of vertex constraints to be satisfied.
+    INTEGER(INTG) , ALLOCATABLE       :: ELEMENT_WEIGHT(:) 
     INTEGER(INTG) , ALLOCATABLE       :: ELEMENT_SET(:)
     INTEGER(INTG) , ALLOCATABLE       :: NODE_SET(:)
-    INTEGER(INTG) , ALLOCATABLE       :: NODE_WEIGHT_SET(:)
-    LOGICAL                           :: NODE_BASED_DECOMPOSITION
+    INTEGER(INTG) , ALLOCATABLE       :: NODE_WEIGHT_SET(:) !< Array defining weight assigned to each vertex of the graph.
+    LOGICAL                           :: NODE_BASED_DECOMPOSITION !< Parameter that switches node-based-decomposition when set to true. 
     INTEGER(INTG) , ALLOCATABLE       :: EDGES_TO_SET_WEIGHT_ON(:,:)  
-    INTEGER(INTG) , ALLOCATABLE       :: EDGE_WEIGHT(:)
+    INTEGER(INTG) , ALLOCATABLE       :: EDGE_WEIGHT(:) !< An array  defining weight assigned to each edge of the graph.
     INTEGER(INTG)                     :: NUMBER_OF_COMMON_NODES
-    INTEGER(INTG)                     :: WEIGHT_FLAG, NUM_FLAG
-    INTEGER(INTG), ALLOCATABLE        :: NODE_DOMAIN(:)
-    INTEGER(INTG), ALLOCATABLE        :: VTX_DIST(:)
-    INTEGER(INTG), ALLOCATABLE        :: XADJ(:), ADJNCY(:)
-    INTEGER(INTG), ALLOCATABLE        :: ADJWT(:)
-    ! =========================================================!
+    INTEGER(INTG)                     :: WEIGHT_FLAG    !< A parameter defining whether weights are attached to edge ,vertices, both edge and vertices or none. 
+    INTEGER(INTG)                     :: NUM_FLAG  !< A parameter that defines if vertex numbering starts from 0 or 1.
+    INTEGER(INTG), ALLOCATABLE        :: NODE_DOMAIN(:) !< NODE_DOMAIN(global_node_idx). An array where processor assigned to each node is stored.
+    INTEGER(INTG), ALLOCATABLE        :: VTX_DIST(:) ! An array that stores number of vertices assigned to each processor. 
+    INTEGER(INTG), ALLOCATABLE        :: XADJ(:) ! Array used to store graph adjacencies.
+    INTEGER(INTG), ALLOCATABLE        :: ADJNCY(:) ! Array used to store graph adjacencies.
+    INTEGER(INTG), ALLOCATABLE        :: ADJWT(:) ! 
     LOGICAL :: DECOMPOSITION_FINISHED !<Is .TRUE. if the decomposition has finished being created, .FALSE. if not.
     TYPE(DECOMPOSITIONS_TYPE), POINTER :: DECOMPOSITIONS !<A pointer to the decompositions for this decomposition.
     TYPE(MESH_TYPE), POINTER :: MESH !<A pointer to the mesh for this decomposition.
@@ -1396,13 +1396,14 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
     TYPE(FIELD_TYPE), POINTER :: PTR !<The pointer to the field.  
   END TYPE FIELD_PTR_TYPE
 
-  TYPE COUPLED_DECOMPOSITION_TYPE !mirzawd
-    INTEGER(INTG)                                      :: USER_NUMBER, MESH_IDX
-    TYPE(FIELD_PTR_TYPE), ALLOCATABLE                  :: COUPLED_FIELDS(:)
-    INTEGER(INTG), ALLOCATABLE                         :: INTER_EDGES(:,:) 
+  TYPE COUPLED_DECOMPOSITION_TYPE
+    INTEGER(INTG)                                      :: USER_NUMBER !<The user defined identifier for the CoupledDecompositionType objects. The user number must be unique.
+    INTEGER(INTG)                                      :: mesh_idx !<A parameter used as index for the coupled mesh and interface graphs. MESH_IDX = 1 and MESH_IDX = 2  are indices used for the coupled mesh graph whereas MESH_IDX = 3 index are used for the interface graph.  
+    TYPE(FIELD_PTR_TYPE), ALLOCATABLE                  :: COUPLED_FIELDS(:) !< COUPLED_FIELDS(mesh_idx) is an array representing geometric field correspnding to each coupled mesh and the interface graph.
+    INTEGER(INTG), ALLOCATABLE                         :: INTER_EDGES(:,:) !< INTER_EDGES(coupled_mesh_graph_vertex_idx,interface_mesh_graph_vertex_idx). A 2D array representing a binary relation between vertices of coupled mesh graph and the interface graph.  
     REAL(RP), ALLOCATABLE                              :: COUPLED_MESH_COORDINATES(:,:) 
     REAL(RP), ALLOCATABLE                              :: INTERFACE_MESH_COORDINATES(:,:)
-    INTEGER(INTG), ALLOCATABLE                         :: OLD_TO_NEW_VERTEX_MAPPING(:,:)      
+    INTEGER(INTG), ALLOCATABLE                         :: OLD_TO_NEW_VERTEX_MAPPING(:,:) !< OLD_TO_NEW_VERTEX_MAPPING(old_vertex_idx,new_vertex_idx). A 2D array that shows one-to-one mapping between vertices of original coupled graph and the coupled graph where vertices are merged.       
                                          
   END TYPE COUPLED_DECOMPOSITION_TYPE
 
