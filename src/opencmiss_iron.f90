@@ -62677,11 +62677,11 @@ CONTAINS
 ! ==================================================================================!
 !!!!!!!!! THE FOLLWOING SUBROUTINE GIVES  NODES   OF AN ELEMENT !!!!!!!!!!!!!!!!!!!!!
 ! ==================================================================================!
-  SUBROUTINE cmfe_Mesh_ElementNOdesGet(Mesh,ElementIdx,ElementNOdes,err)
+  SUBROUTINE cmfe_Mesh_ElementNOdesGet(Mesh,ElementIdx,ElementNOdes,Err)
     ! Argument variables
     TYPE(cmfe_MeshType), INTENT(IN)               :: Mesh
     INTEGER(INTG), INTENT(IN)                     :: ElementIdx
-    INTEGER(INTG), INTENT(OUT)                    :: err !<The error code.
+    INTEGER(INTG), INTENT(OUT)                    :: Err !<The error code.
     INTEGER(INTG), INTENT(OUT),ALLOCATABLE        :: ElementNOdes(:)
 
 
