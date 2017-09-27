@@ -1071,12 +1071,12 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
     REAL(DP), ALLOCATABLE             :: TPWGT(:)  !< An array that defines the work-load corresponding to each processor.              
     REAL(RP), ALLOCATABLE             :: UBVEC(:)  !< Parameter used to define vetex weight imbalance. 
     INTEGER(INTG)                     :: NUMBER_OF_CONSTRAINTS !< Parameters used to defined number of vertex constraints to be satisfied.
-    INTEGER(INTG) , ALLOCATABLE       :: ELEMENT_WEIGHT(:) 
-    INTEGER(INTG) , ALLOCATABLE       :: ELEMENT_SET(:)
-    INTEGER(INTG) , ALLOCATABLE       :: NODE_SET(:)
+    INTEGER(INTG) , ALLOCATABLE       :: ELEMENT_WEIGHT(:) !< Remove this maybe ?
+    INTEGER(INTG) , ALLOCATABLE       :: ELEMENT_SET(:) !< Remove this maybe ?
+    INTEGER(INTG) , ALLOCATABLE       :: NODE_SET(:) !< Remove this maybe ?
     INTEGER(INTG) , ALLOCATABLE       :: NODE_WEIGHT_SET(:) !< Array defining weight assigned to each vertex of the graph.
     LOGICAL                           :: NODE_BASED_DECOMPOSITION !< Parameter that switches node-based-decomposition when set to true. 
-    INTEGER(INTG) , ALLOCATABLE       :: EDGES_TO_SET_WEIGHT_ON(:,:)  
+    INTEGER(INTG) , ALLOCATABLE       :: EDGES_TO_SET_WEIGHT_ON(:,:) !< Remove this maybe ?  
     INTEGER(INTG) , ALLOCATABLE       :: EDGE_WEIGHT(:) !< An array  defining weight assigned to each edge of the graph.
     INTEGER(INTG)                     :: NUMBER_OF_COMMON_NODES
     INTEGER(INTG)                     :: WEIGHT_FLAG    !< A parameter defining whether weights are attached to edge ,vertices, both edge and vertices or none. 

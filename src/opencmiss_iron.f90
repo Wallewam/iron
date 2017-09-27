@@ -62843,8 +62843,7 @@ CONTAINS
  
   SUBROUTINE cmfe_Decomposition_NodeWeightSet(Decomposition,NOdeWeightSet,err)
 
-
-     !Argument variables
+   !Argument variables
    TYPE(cmfe_DecompositionType), INTENT(INOUT) :: Decomposition !<The decomposition object to set node weights for. 
    INTEGER(INTG), INTENT(IN)                   :: NOdeWeightSet(:) !<A set of node weights to be assigned.
    INTEGER(INTG), INTENT(OUT)                  :: err !<The error code.
@@ -62884,9 +62883,10 @@ CONTAINS
   END SUBROUTINE cmfe_CoupledDecomposition_Initialise
 
 ! =======================================================================================================================
+  !Create start cmfe_CoupledDecompositionType object.
+! =======================================================================================================================
 
-  SUBROUTINE cmfe_CoupledDecomposition_CreateStart(CoupledDecomposition, &
-    & CoupledDecompositionUserNUmber, Err)
+  SUBROUTINE cmfe_CoupledDecomposition_CreateStart(CoupledDecomposition, CoupledDecompositionUserNUmber, Err)
 
     !Argument variables
     TYPE(cmfe_CoupledDecompositionType), INTENT(OUT) ::  CoupledDecomposition !<The CoupledDecompositionType object to create stqart.
@@ -62909,8 +62909,9 @@ CONTAINS
 
 
  !=================================================================================================================
+  ! The following subroutine adds the geometric field information of the coupled mesh graph G_{i} in cmfe_CoupledDecomposition object.
+ !=================================================================================================================
 
-  !>Initialises a cmfe_CoupledDecompositionType object.
   SUBROUTINE cmfe_CoupledDecomposition_AddCoupledMesh(COupledDecomposition, GeometricField, err)
  
 
@@ -62956,7 +62957,7 @@ CONTAINS
   END SUBROUTINE cmfe_CoupledDecomposition_AddInterface
  
  !=================================================================================================================
- ! The partitioning algorithm is implemented in the following subroutine.
+ ! The "coupling aware" partitioning algorithm is implemented in the following subroutine.
   SUBROUTINE cmfe_CoupledDecomposition_CreateFinish(CoupledDecomposition, err)
 
     !Argument variables
@@ -62999,9 +63000,9 @@ CONTAINS
     RETURN
 
   END SUBROUTINE  cmfe_Decomposition_AssignDecompositionField
-
  !================================================================================================================
-
+ ! THis subroutine updates the decomposition object associated with the coupled mesh G_i.
+ !================================================================================================================
   SUBROUTINE cmfe_CoupledDecomposition_UpdateDecomposition(CoupledDecomposition,Decomposition, err)
 
     !Argument variables
@@ -63023,7 +63024,8 @@ CONTAINS
   END SUBROUTINE  cmfe_CoupledDecomposition_UpdateDecomposition
 
  !================================================================================================================
-
+ ! THis subroutine updates the decomposition object associated with the interface coupled mesh G_I.
+ !================================================================================================================
   SUBROUTINE cmfe_CoupledDecomposition_UpdateInterfaceDecomposition(CoupledDecomposition,Decomposition, err)
     !Argument variables
     TYPE(cmfe_CoupledDecompositionType), INTENT(IN) :: CoupledDecomposition !<cmfe_CoupledDecompositionType object to get the node domains from.
@@ -63046,7 +63048,8 @@ CONTAINS
 
 
  !================================================================================================================
-
+ ! THis subroutine nullify the coupled mesh geometric field.
+ !================================================================================================================ 
   SUBROUTINE cmfe_CoupledDecomposition_NullifyGeometricField(Field, err)
 
     !Argument variables
@@ -63069,7 +63072,8 @@ CONTAINS
 
 
  !================================================================================================================
-
+ ! ! THis subroutine nullify the geometric field associated with the field.
+ !================================================================================================================
   SUBROUTINE cmfe_CoupledDecomposition_NullifyRegionField(Region, err)
     !Argument variables
     TYPE(cmfe_RegionType), INTENT(INOUT)        :: Region !<cmfe_RegionType object to nullify.
@@ -63089,7 +63093,8 @@ CONTAINS
   END SUBROUTINE  cmfe_CoupledDecomposition_NullifyRegionField
 
  !================================================================================================================
-
+ ! THis subroutine nullify the interface geometric field.
+ !================================================================================================================ 
   SUBROUTINE cmfe_CoupledDecomposition_NullifyInterfaceField(Interface, err)
 
     !Argument variables
