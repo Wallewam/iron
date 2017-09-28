@@ -274,7 +274,6 @@ CONTAINS
   !
   !================================================================================================================================
   !
-
   !>Finishes the creation of a domain decomposition on a given mesh. \see OPENCMISS::CMISSDecompositionCreateFinish
   SUBROUTINE DECOMPOSITION_CREATE_FINISH(DECOMPOSITION,ERR,ERROR,*)
 
@@ -461,7 +460,7 @@ CONTAINS
     RETURN 1
   END SUBROUTINE DECOMPOSITION_CREATE_START
 
-  !
+!
   !================================================================================================================================
   !
 
@@ -548,11 +547,7 @@ CONTAINS
     RETURN 1
   END SUBROUTINE DECOMPOSITION_DESTROY_NUMBER
 
-  !
-  !================================================================================================================================
-  !
-
-  !>Destroys a domain decomposition identified by a pointer and deallocates all memory. \see OPENCMISS::CMISSDecompositionDestroy
+ !>Destroys a domain decomposition identified by a pointer and deallocates all memory. \see OPENCMISS::CMISSDecompositionDestroy
   SUBROUTINE DECOMPOSITION_DESTROY(DECOMPOSITION,ERR,ERROR,*)
 
     !Argument variables
@@ -614,11 +609,7 @@ CONTAINS
     RETURN 1
   END SUBROUTINE DECOMPOSITION_DESTROY
 
-  !
-  !================================================================================================================================
-  !
-
-  !>Calculates the element domains for a decomposition of a mesh. \see OPENCMISS::CMISSDecompositionElementDomainCalculate
+ !>Calculates the element domains for a decomposition of a mesh. \see OPENCMISS::CMISSDecompositionElementDomainCalculate
   SUBROUTINE DECOMPOSITION_ELEMENT_DOMAIN_CALCULATE(DECOMPOSITION,ERR,ERROR,*)
 
     !Argument variables
@@ -626,12 +617,12 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
-    INTEGER(INTG) :: number_elem_indicies,elem_index,elem_count,ne,nn,MY_COMPUTATIONAL_NODE_NUMBER,number_computational_nodes, &
+    INTEGER(INTG) :: number_elem_indicies,elem_index,elem_count,ne,nn,my_computational_node_number,number_computational_nodes, &
       & no_computational_node,ELEMENT_START,ELEMENT_STOP,MY_ELEMENT_START,MY_ELEMENT_STOP,NUMBER_OF_ELEMENTS, &
       & MY_NUMBER_OF_ELEMENTS,MPI_IERROR,MAX_NUMBER_ELEMENTS_PER_NODE,component_idx,minNumberXi
     INTEGER(INTG), ALLOCATABLE :: ELEMENT_COUNT(:),ELEMENT_PTR(:),ELEMENT_INDICIES(:),ELEMENT_DISTANCE(:),DISPLACEMENTS(:), &
       & RECEIVE_COUNTS(:)
-    INTEGER(INTG) :: ELEMENT_WEIGHT(1),WEIGHT_FLAG,NUMBER_FLAG,NUMBER_OF_CONSTRAINTSS, &
+    INTEGER(INTG) :: ELEMENT_WEIGHT(1),WEIGHT_FLAG,NUMBER_FLAG,NUMBER_OF_CONSTRAINTS, &
       & NUMBER_OF_COMMON_NODES,PARMETIS_OPTIONS(0:2)
     !ParMETIS now has double for these
     !REAL(SP) :: UBVEC(1)
@@ -654,7 +645,7 @@ CONTAINS
           
           number_computational_nodes=COMPUTATIONAL_NODES_NUMBER_GET(ERR,ERROR)
           IF(ERR/=0) GOTO 999
-          MY_COMPUTATIONAL_NODE_NUMBER=COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR)
+          my_computational_node_number=COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR)
           IF(ERR/=0) GOTO 999
           
           SELECT CASE(DECOMPOSITION%DECOMPOSITION_TYPE)
@@ -696,7 +687,7 @@ CONTAINS
                 NUMBER_OF_ELEMENTS=ELEMENT_STOP-ELEMENT_START+1
                 RECEIVE_COUNTS(no_computational_node)=NUMBER_OF_ELEMENTS
                 IF(NUMBER_OF_ELEMENTS>MAX_NUMBER_ELEMENTS_PER_NODE) MAX_NUMBER_ELEMENTS_PER_NODE=NUMBER_OF_ELEMENTS
-                IF(no_computational_node==MY_COMPUTATIONAL_NODE_NUMBER) THEN
+                IF(no_computational_node==my_computational_node_number) THEN
                   MY_ELEMENT_START=ELEMENT_START
                   MY_ELEMENT_STOP=ELEMENT_STOP
                   MY_NUMBER_OF_ELEMENTS=ELEMENT_STOP-ELEMENT_START+1
@@ -734,7 +725,7 @@ CONTAINS
               WEIGHT_FLAG=0 !No weights
               ELEMENT_WEIGHT(1)=1 !Isn't used due to weight flag
               NUMBER_FLAG=0 !C Numbering as there is a bug with Fortran numbering
-              NUMBER_OF_CONSTRAINTSS=1
+              NUMBER_OF_CONSTRAINTS=1
               IF(minNumberXi==1) THEN
                 NUMBER_OF_COMMON_NODES=1
               ELSE
@@ -751,8 +742,8 @@ CONTAINS
               
               !Call ParMETIS to calculate the partitioning of the mesh graph.
               CALL PARMETIS_PARTMESHKWAY(ELEMENT_DISTANCE,ELEMENT_PTR,ELEMENT_INDICIES,ELEMENT_WEIGHT,WEIGHT_FLAG,NUMBER_FLAG, &
-                & NUMBER_OF_CONSTRAINTSS,NUMBER_OF_COMMON_NODES,DECOMPOSITION%NUMBER_OF_DOMAINS,TPWGTS,UBVEC,PARMETIS_OPTIONS, &
-                & DECOMPOSITION%NUMBER_OF_EDGES_CUT,DECOMPOSITION%ELEMENT_DOMAIN(DISPLACEMENTS(MY_COMPUTATIONAL_NODE_NUMBER)+1:), &
+                & NUMBER_OF_CONSTRAINTS,NUMBER_OF_COMMON_NODES,DECOMPOSITION%NUMBER_OF_DOMAINS,TPWGTS,UBVEC,PARMETIS_OPTIONS, &
+                & DECOMPOSITION%NUMBER_OF_EDGES_CUT,DECOMPOSITION%ELEMENT_DOMAIN(DISPLACEMENTS(my_computational_node_number)+1:), &
                 & COMPUTATIONAL_ENVIRONMENT%MPI_COMM,ERR,ERROR,*999)
               
               !Transfer all the element domain information to the other computational nodes so that each rank has all the info
@@ -802,7 +793,6 @@ CONTAINS
             ENDIF
           ENDDO !no_computational_node
           DEALLOCATE(ELEMENT_COUNT)
-
           
         ELSE
           CALL FlagError("Decomposition mesh topology is not associated.",ERR,ERROR,*999)
@@ -834,6 +824,7 @@ CONTAINS
           & ERR,ERROR,*999)
       ENDDO !ne
     ENDIF
+    
     EXITS("DECOMPOSITION_ELEMENT_DOMAIN_CALCULATE")
     RETURN
 999 IF(ALLOCATED(RECEIVE_COUNTS)) DEALLOCATE(RECEIVE_COUNTS)
@@ -846,10 +837,6 @@ CONTAINS
     RETURN 1
   END SUBROUTINE DECOMPOSITION_ELEMENT_DOMAIN_CALCULATE
   
-  !
-  !================================================================================================================================
-  !
-
   !>Gets the domain for a given element in a decomposition of a mesh. \todo should be able to specify lists of elements. \see OPENCMISS::CMISSDecompositionElementDomainGet
   SUBROUTINE DECOMPOSITION_ELEMENT_DOMAIN_GET(DECOMPOSITION,USER_ELEMENT_NUMBER,DOMAIN_NUMBER,ERR,ERROR,*)
 
@@ -920,7 +907,7 @@ CONTAINS
   !================================================================================================================================
   !
 
-  !>Sets the domain for a given element in a decomposition of a mesh. \todo move to user number, should be able to specify lists of elements. \see OPENCMISS::CMISSDecompositionElementDomainSet 
+!>Sets the domain for a given element in a decomposition of a mesh. \todo move to user number, should be able to specify lists of elements. \see OPENCMISS::CMISSDecompositionElementDomainSet 
   SUBROUTINE DECOMPOSITION_ELEMENT_DOMAIN_SET(DECOMPOSITION,GLOBAL_ELEMENT_NUMBER,DOMAIN_NUMBER,ERR,ERROR,*)
 
     !Argument variables
@@ -984,7 +971,8 @@ CONTAINS
   !================================================================================================================================
   !
 
-  !!MERGE: ditto
+
+ !!MERGE: ditto
   
   !>Gets the mesh component number which will be used for the decomposition of a mesh. \see OPENCMISS::CMISSDecompositionMeshComponentGet
   SUBROUTINE DECOMPOSITION_MESH_COMPONENT_NUMBER_GET(DECOMPOSITION,MESH_COMPONENT_NUMBER,ERR,ERROR,*)
@@ -1063,7 +1051,7 @@ CONTAINS
     RETURN 1
   END SUBROUTINE DECOMPOSITION_MESH_COMPONENT_NUMBER_SET
   
-  !
+ !
   !================================================================================================================================
   !
 
@@ -1198,7 +1186,7 @@ CONTAINS
       meshComponentNumber=DECOMPOSITION%MESH_COMPONENT_NUMBER
       IF(ALLOCATED(DECOMPOSITION%MESH%TOPOLOGY(meshComponentNumber)%PTR%dataPoints%dataPoints)) THEN
           CALL DecompositionTopology_DataPointsCalculate(DECOMPOSITION%TOPOLOGY,ERR,ERROR,*999)
-        END IF  
+        ENDIF   
     ELSE
       CALL FlagError("Topology is not associated.",ERR,ERROR,*999)
     ENDIF
@@ -1213,7 +1201,7 @@ CONTAINS
   !================================================================================================================================
   !
 
-  !>Calculates the decomposition element topology.
+!>Calculates the decomposition element topology.
   SUBROUTINE DecompositionTopology_DataPointsCalculate(TOPOLOGY,ERR,ERROR,*)
 
     !Argument variables
@@ -1270,7 +1258,7 @@ CONTAINS
                   IF(localElement<elementsMapping%GHOST_START) THEN
                     decompositionData%numberOfDataPoints=decompositionData%numberOfDataPoints+ &
                       & decompositionData%elementDataPoint(localElement)%numberOfProjectedData
-                  END IF              
+                  ENDIF               
                   decompositionData%totalNumberOfDataPoints=decompositionData%totalNumberOfDataPoints+ &
                     & decompositionData%elementDataPoint(localElement)%numberOfProjectedData
                   ALLOCATE(decompositionData%elementDataPoint(localElement)%dataIndices(decompositionData% &
@@ -1351,11 +1339,7 @@ CONTAINS
     RETURN 1
   END SUBROUTINE DecompositionTopology_DataProjectionCalculate
 
-  !
-  !================================================================================================================================
-  !
-
-  !>Gets the local data point number for data points projected on an element
+ !>Gets the local data point number for data points projected on an element
   SUBROUTINE DecompositionTopology_ElementDataPointLocalNumberGet(decompositionTopology,elementNumber,dataPointIndex, &
        & dataPointLocalNumber,err,error,*)
 
@@ -1467,7 +1451,7 @@ CONTAINS
   !================================================================================================================================
   !
 
-  !>Gets the number of data points projected on an element
+ !>Gets the number of data points projected on an element
   SUBROUTINE DecompositionTopology_NumberOfElementDataPointsGet(decompositionTopology,userElementNumber, &
        & numberOfDataPoints,err,error,*)
 
@@ -1572,7 +1556,7 @@ CONTAINS
   !================================================================================================================================
   !
 
-  !>Checks that a user element number exists in a decomposition. 
+!>Checks that a user element number exists in a decomposition. 
   SUBROUTINE DECOMPOSITION_TOPOLOGY_ELEMENT_CHECK_EXISTS(DECOMPOSITION_TOPOLOGY,USER_ELEMENT_NUMBER,ELEMENT_EXISTS, &
     & DECOMPOSITION_LOCAL_ELEMENT_NUMBER,GHOST_ELEMENT,ERR,ERROR,*)
 
@@ -1620,8 +1604,7 @@ CONTAINS
   !
   !================================================================================================================================
   !
-
-  !>Get the basis for an element in the domain identified by its local number
+!>Get the basis for an element in the domain identified by its local number
   SUBROUTINE DomainTopology_ElementBasisGet(domainTopology,userElementNumber, &
       & basis,err,error,*)
 
@@ -1675,7 +1658,7 @@ CONTAINS
   !================================================================================================================================
   !
 
-  !>Finalises the given decomposition topology element.
+ !>Finalises the given decomposition topology element.
   SUBROUTINE DECOMPOSITION_TOPOLOGY_ELEMENT_FINALISE(ELEMENT,ERR,ERROR,*)
 
     !Argument variables
@@ -1732,7 +1715,7 @@ CONTAINS
   !================================================================================================================================
   !
 
-  !>Calculates the element numbers adjacent to an element in a decomposition topology.
+ !>Calculates the element numbers adjacent to an element in a decomposition topology.
   SUBROUTINE DecompositionTopology_ElementAdjacentElementCalculate(TOPOLOGY,ERR,ERROR,*)
 
     !Argument variables
@@ -2209,7 +2192,7 @@ CONTAINS
   !================================================================================================================================
   !
 
-  !>Finalises the elements in the given decomposition topology. \todo Pass in the decomposition elements pointer.
+ !>Finalises the elements in the given decomposition topology. \todo Pass in the decomposition elements pointer.
   SUBROUTINE DECOMPOSITION_TOPOLOGY_ELEMENTS_FINALISE(TOPOLOGY,ERR,ERROR,*)
 
     !Argument variables
@@ -2243,6 +2226,7 @@ CONTAINS
   !
   !================================================================================================================================
   !
+
 
   !>Initialises the element data structures for a decomposition topology.
   SUBROUTINE DECOMPOSITION_TOPOLOGY_ELEMENTS_INITIALISE(TOPOLOGY,ERR,ERROR,*)
@@ -2348,11 +2332,11 @@ CONTAINS
         ENDIF
         IF(DECOMPOSITION%CALCULATE_FACES) THEN !Default is currently false
           CALL DECOMPOSITION_TOPOLOGY_FACES_INITIALISE(DECOMPOSITION%TOPOLOGY,ERR,ERROR,*999)
-        END IF     
+        ENDIF      
         meshComponentNumber=DECOMPOSITION%MESH_COMPONENT_NUMBER
         IF(ALLOCATED(DECOMPOSITION%MESH%TOPOLOGY(meshComponentNumber)%PTR%dataPoints%dataPoints)) THEN
           CALL DecompositionTopology_DataPointsInitialise(DECOMPOSITION%TOPOLOGY,ERR,ERROR,*999)
-        END IF  
+        ENDIF   
       ENDIF
     ELSE
       CALL FlagError("Decomposition is not associated.",ERR,ERROR,*999)
@@ -2368,7 +2352,7 @@ CONTAINS
   !================================================================================================================================
   !
 
-  !>Finalises a line in the given decomposition topology and deallocates all memory.
+ !>Finalises a line in the given decomposition topology and deallocates all memory.
   SUBROUTINE DECOMPOSITION_TOPOLOGY_LINE_FINALISE(LINE,ERR,ERROR,*)
 
     !Argument variables
@@ -2423,7 +2407,7 @@ CONTAINS
   !================================================================================================================================
   !
 
-  !>Calculates the lines in the given decomposition topology.
+ !>Calculates the lines in the given decomposition topology.
   SUBROUTINE DECOMPOSITION_TOPOLOGY_LINES_CALCULATE(TOPOLOGY,ERR,ERROR,*)
 
     !Argument variables
@@ -2831,7 +2815,7 @@ CONTAINS
               ENDDO !component_idx
             ELSE
               CALL FlagError("Decomposition mesh is not associated.",ERR,ERROR,*999)
-            END IF                       
+            ENDIF                        
           ELSE
             CALL FlagError("Topology decomposition is not associated.",ERR,ERROR,*999)
           ENDIF
@@ -2909,7 +2893,7 @@ CONTAINS
   !================================================================================================================================
   !
 
-  !>Finalises the lines in the given decomposition topology. \todo Pass in the topology lines
+   !>Finalises the lines in the given decomposition topology. \todo Pass in the topology lines
   SUBROUTINE DECOMPOSITION_TOPOLOGY_LINES_FINALISE(TOPOLOGY,ERR,ERROR,*)
 
     !Argument variables
@@ -3065,6 +3049,7 @@ CONTAINS
     RETURN 1
   END SUBROUTINE DECOMPOSITION_TOPOLOGY_FACE_INITIALISE
   
+ 
   !
   !================================================================================================================================
   !
@@ -3332,7 +3317,7 @@ CONTAINS
 !                                  DECOMPOSITION_FACE2=>DECOMPOSITION_FACES%FACES(nf2)
 !                                  DOMAIN_FACE2=>DOMAIN_FACES%FACES(nf2)
                                    !Check whether XI of face have same direction
-!                                  IF((OTHER_XI_DIRECTIONS3(BASIS%LOCAL_FACE_XI_DIRECTION(basis_local_face_idx),2,1)==&
+!                                  IF ((OTHER_XI_DIRECTIONS3(BASIS%LOCAL_FACE_XI_DIRECTION(basis_local_face_idx),2,1)==&
 !                                     &OTHER_XI_DIRECTIONS3(BASIS2%LOCAL_FACE_XI_DIRECTION(basis_local_face_idx),2,1)).OR.&
 !                                     &(OTHER_XI_DIRECTIONS3(BASIS%LOCAL_FACE_XI_DIRECTION(basis_local_face_idx),3,1)==&
 !                                     &OTHER_XI_DIRECTIONS3(BASIS2%LOCAL_FACE_XI_DIRECTION(basis_local_face_idx),3,1))) THEN
@@ -3502,7 +3487,7 @@ CONTAINS
               ENDDO !component_idx
             ELSE
               CALL FlagError("Decomposition mesh is not associated",ERR,ERROR,*999)
-            END IF                       
+            ENDIF                        
           ELSE
             CALL FlagError("Topology decomposition is not associated",ERR,ERROR,*999)
           ENDIF
@@ -4061,7 +4046,7 @@ CONTAINS
   !================================================================================================================================
   !
 
-  !>Calculates the local/global element mappings for a domain decomposition.
+!>Calculates the local/global element mappings for a domain decomposition.
   SUBROUTINE DOMAIN_MAPPINGS_ELEMENTS_CALCULATE(DOMAIN,ERR,ERROR,*)
 
     !Argument variables
@@ -4070,7 +4055,7 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     INTEGER(INTG) :: DUMMY_ERR,no_adjacent_element,adjacent_element,domain_no,domain_idx,ne,nn,np,NUMBER_OF_DOMAINS, &
-      & NUMBER_OF_ADJACENT_ELEMENTS,MY_COMPUTATIONAL_NODE_NUMBER,component_idx
+      & NUMBER_OF_ADJACENT_ELEMENTS,my_computational_node_number,component_idx
     INTEGER(INTG), ALLOCATABLE :: ADJACENT_ELEMENTS(:),DOMAINS(:),LOCAL_ELEMENT_NUMBERS(:)
     TYPE(LIST_TYPE), POINTER :: ADJACENT_DOMAINS_LIST
     TYPE(LIST_PTR_TYPE), ALLOCATABLE :: ADJACENT_ELEMENTS_LIST(:)
@@ -4091,9 +4076,9 @@ CONTAINS
             IF(ASSOCIATED(DOMAIN%MESH)) THEN
               MESH=>DOMAIN%MESH
               component_idx=DOMAIN%MESH_COMPONENT_NUMBER
-              MY_COMPUTATIONAL_NODE_NUMBER=COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR)
+              my_computational_node_number=COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR)
               IF(ERR/=0) GOTO 999        
-
+              
               !Calculate the local and global numbers and set up the mappings
               ALLOCATE(ELEMENTS_MAPPING%GLOBAL_TO_LOCAL_MAP(MESH%NUMBER_OF_ELEMENTS),STAT=ERR)
               IF(ERR/=0) CALL FlagError("Could not allocate element mapping global to local map.",ERR,ERROR,*999)
@@ -4277,7 +4262,10 @@ CONTAINS
     RETURN 1
   END SUBROUTINE DOMAIN_MAPPINGS_ELEMENTS_CALCULATE
   
-!================================================================================================================================
+ 
+  !
+  !================================================================================================================================
+
   !>Calculates the local/global node/DOFs mappings for a domain decomposition.
 !================================================================================================================================
  SUBROUTINE DOMAIN_MAPPINGS_DOFS_NODE_CALCULATE_NEW(DOMAIN,ERR,ERROR,*)
@@ -4811,7 +4799,11 @@ CONTAINS
 999 ERRORSEXITS("DOMAIN_MAPPINGS_INITIALISE",ERR,ERROR)
     RETURN 1
   END SUBROUTINE DOMAIN_MAPPINGS_INITIALISE
-  
+   
+  !
+  !================================================================================================================================
+  !
+
 !==============================================================================================================================
   !>Calculates the local/global element mappings for a domain decomposition.
 !==============================================================================================================================
@@ -5143,8 +5135,7 @@ CONTAINS
 
   END SUBROUTINE DOMAIN_MAPPINGS_ELEMENTS_CALCULATE_NEW
 
-!==============================================================================================================================
-  !>Calculates the local/global node and dof mappings for a domain decomposition.
+ !>Calculates the local/global node and dof mappings for a domain decomposition.
   SUBROUTINE DOMAIN_MAPPINGS_NODES_DOFS_CALCULATE(DOMAIN,ERR,ERROR,*)
 
     !Argument variables
@@ -5154,7 +5145,7 @@ CONTAINS
     !Local Variables
     INTEGER(INTG) :: DUMMY_ERR,no_adjacent_element,no_computational_node,no_ghost_node,adjacent_element,ghost_node, &
       & NUMBER_OF_NODES_PER_DOMAIN,domain_idx,domain_idx2,domain_no,node_idx,derivative_idx,version_idx,ny,NUMBER_OF_DOMAINS, &
-      & MAX_NUMBER_DOMAINS,NUMBER_OF_GHOST_NODES,MY_COMPUTATIONAL_NODE_NUMBER,number_computational_nodes,component_idx
+      & MAX_NUMBER_DOMAINS,NUMBER_OF_GHOST_NODES,my_computational_node_number,number_computational_nodes,component_idx
     INTEGER(INTG), ALLOCATABLE :: LOCAL_NODE_NUMBERS(:),LOCAL_DOF_NUMBERS(:),NODE_COUNT(:),NUMBER_INTERNAL_NODES(:), &
       & NUMBER_BOUNDARY_NODES(:)
     INTEGER(INTG), ALLOCATABLE :: DOMAINS(:),ALL_DOMAINS(:),GHOST_NODES(:)
@@ -5188,7 +5179,7 @@ CONTAINS
                   
                   number_computational_nodes=COMPUTATIONAL_NODES_NUMBER_GET(ERR,ERROR)
                   IF(ERR/=0) GOTO 999
-                  MY_COMPUTATIONAL_NODE_NUMBER=COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR)
+                  my_computational_node_number=COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR)
                   IF(ERR/=0) GOTO 999
                   
                   !Calculate the local and global numbers and set up the mappings
@@ -5328,7 +5319,6 @@ CONTAINS
                   !For the second pass assign boundary nodes to one domain on the boundary and set local node numbers.
                   NUMBER_OF_NODES_PER_DOMAIN=FLOOR(REAL(MESH_TOPOLOGY%NODES%numberOfNodes,DP)/ &
                     & REAL(DECOMPOSITION%NUMBER_OF_DOMAINS,DP))
-                  IF(ALLOCATED(DOMAIN%NODE_DOMAIN)) DEALLOCATE(DOMAIN%NODE_DOMAIN) !mirzawd
                   ALLOCATE(DOMAIN%NODE_DOMAIN(MESH_TOPOLOGY%NODES%numberOfNodes),STAT=ERR)
                   IF(ERR/=0) CALL FlagError("Could not allocate node domain",ERR,ERROR,*999)
                   DOMAIN%NODE_DOMAIN=-1
@@ -5627,6 +5617,11 @@ CONTAINS
 997 ERRORSEXITS("DOMAIN_MAPPINGS_NODES_DOFS_CALCULATE",ERR,ERROR)
     RETURN 1
   END SUBROUTINE DOMAIN_MAPPINGS_NODES_DOFS_CALCULATE
+  
+  !
+  !================================================================================================================================
+  !
+
  !============================================================================
   !>Finalises the node mapping in the given domain mappings. \todo pass in the nodes mapping
   SUBROUTINE DOMAIN_MAPPINGS_NODES_FINALISE(DOMAIN_MAPPINGS,ERR,ERROR,*)
@@ -7767,7 +7762,7 @@ CONTAINS
                     ELSE
                       xiDirection=xiCoordIdx
                       matchIndex=BASIS%NUMBER_OF_NODES_XIC(xiCoordIdx)
-                    END IF                   
+                    ENDIF                    
                     DO localNodeIdx=1,BASIS%NUMBER_OF_NODES
                       IF(basis%NODE_POSITION_INDEX(localNodeIdx,XIDIRECTION)==matchIndex) THEN
                         nodeIdx=elements%elements(elementIdx)%MESH_ELEMENT_NODES(localNodeIdx)
@@ -7841,6 +7836,7 @@ CONTAINS
   !
   !===============================================================================================================================
   !
+
 
   !>Calculates the degrees-of-freedom for a mesh topology. 
   SUBROUTINE MeshTopologyDofsCalculate(topology,err,error,*)
@@ -10041,7 +10037,7 @@ CONTAINS
   !================================================================================================================================
   !
 
-  !>Calculates the number of derivatives at each node in a topology.
+ !>Calculates the number of derivatives at each node in a topology.
   SUBROUTINE MeshTopologyNodesDerivativesCalculate(topology,err,error,*)
 
     !Argument variables
@@ -16036,32 +16032,8 @@ CONTAINS
 999 RETURN 1 
 
   END SUBROUTINE COUPLED_DECOMPOSITION_GET_NEW_GRAPH
-
-!=============================================================================================================
-
-  integer FUNCTION count_integer(Array,NumberToBeCOunted)
-
-    integer, INTENT(IN)   :: Array(:), NumberToBeCOunted
-
-
-    ! local variable
-    integer               :: counter
-    
-    ! action starts here
-    count_integer                   = 0 
-    DO counter= 1,SIZE(Array)
-       
-      IF(Array(counter) == NumberToBeCOunted) & 
-        & count_integer = count_integer + 1 
-
-    END  DO
-  
-
-
-  END  function count_integer
-
-
   
 END MODULE MESH_ROUTINES
+
 
 

@@ -1405,14 +1405,14 @@ CONTAINS
             MATRIX%M=M
             MATRIX%N=N
           ELSE
- !           LOCAL_ERROR="The number of matrix columns of "//TRIM(NUMBER_TO_VSTRING(N,"*",ERR,ERROR))// &
- !             & " is invalid. The number must be >0."
- !           CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+            LOCAL_ERROR="The number of matrix columns of "//TRIM(NUMBER_TO_VSTRING(N,"*",ERR,ERROR))// &
+              & " is invalid. The number must be >0."
+            CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
           ENDIF
         ELSE
- !         LOCAL_ERROR="The number of matrix rows of "//TRIM(NUMBER_TO_VSTRING(M,"*",ERR,ERROR))// &
- !           & " is invalid. The number must be >0."
- !         CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+          LOCAL_ERROR="The number of matrix rows of "//TRIM(NUMBER_TO_VSTRING(M,"*",ERR,ERROR))// &
+            & " is invalid. The number must be >0."
+          CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
         ENDIF
       ENDIF
     ELSE

@@ -1666,15 +1666,10 @@ CONTAINS
           & EQUATIONS_SET_TRANSVERSE_ISOTROPIC_ACTIVE_SUBTYPE,EQUATIONS_SET_TRANS_ISOTROPIC_ACTIVE_TRANSITION_SUBTYPE, &
           & EQUATIONS_SET_ANISOTROPIC_POLYNOMIAL_SUBTYPE,EQUATIONS_SET_ANISOTROPIC_POLYNOMIAL_ACTIVE_SUBTYPE, &
           & EQUATIONS_SET_INCOMPRESSIBLE_MOONEY_RIVLIN_SUBTYPE, EQUATIONS_SET_HOLZAPFEL_OGDEN_ACTIVECONTRACTION_SUBTYPE) ! 4 dependent components
-          
-          !PRINT*, "ELEMENT_NUMBER=",ELEMENT_NUMBER, ", Loop over gauss points and add residuals: elastictiy_routines.f90: 1670"
-          
+
           !Loop over gauss points and add residuals
           DO gauss_idx=1,DEPENDENT_NUMBER_OF_GAUSS_POINTS
             GAUSS_WEIGHT=DEPENDENT_QUADRATURE_SCHEME%GAUSS_WEIGHTS(gauss_idx)
-            
-            !PRINT*, "next Gauss Point: gauss_idx=",gauss_idx
-            
               !Interpolate dependent, geometric, fibre and materials fields
             CALL FIELD_INTERPOLATE_GAUSS(FIRST_PART_DERIV,BASIS_DEFAULT_QUADRATURE_SCHEME,gauss_idx, &
               & DEPENDENT_INTERPOLATED_POINT,ERR,ERROR,*999)
@@ -1746,24 +1741,10 @@ CONTAINS
                 DO parameter_idx=1,NUMBER_OF_FIELD_COMPONENT_INTERPOLATION_PARAMETERS
                   element_dof_idx=element_dof_idx+1
                   DO component_idx2=1,NUMBER_OF_DIMENSIONS
-                  
-                  
                     NONLINEAR_MATRICES%ELEMENT_RESIDUAL%VECTOR(element_dof_idx)= &
                       & NONLINEAR_MATRICES%ELEMENT_RESIDUAL%VECTOR(element_dof_idx)+ &
                       & GAUSS_WEIGHT*Jxxi*Jznu*THICKNESS*cauchyTensor(component_idx,component_idx2)* &
                       & DFDZ(parameter_idx,component_idx2,component_idx)
-                      
-                    IF (.FALSE.) THEN
-                      PRINT*, "element ",element_dof_idx,", cauchyTensor indices: (",component_idx,",",component_idx2,"), " // &
-                       & "cauchyTensor value: ", cauchyTensor(component_idx,component_idx2),",  GAUSS_WEIGHT=", GAUSS_WEIGHT, &
-                       & ", Jxxi=", Jxxi, ", Jznu=", Jznu, ", THICKNESS=", THICKNESS, &
-                       & ", DFDZ=", DFDZ(parameter_idx,component_idx2,component_idx), &
-                       & ", increment: ", GAUSS_WEIGHT*Jxxi*Jznu*THICKNESS*cauchyTensor(component_idx,component_idx2)* &
-                       & DFDZ(parameter_idx,component_idx2,component_idx), &
-                       & ", -> new sum: ", NONLINEAR_MATRICES%ELEMENT_RESIDUAL%VECTOR(element_dof_idx)
-                      PRINT*, ""
-                    ENDIF
-                     
                   ENDDO ! component_idx2 (inner component index)
                 ENDDO ! parameter_idx (residual vector loop)
               ELSEIF(DEPENDENT_COMPONENT_INTERPOLATION_TYPE==FIELD_ELEMENT_BASED_INTERPOLATION) THEN
@@ -1793,9 +1774,6 @@ CONTAINS
                       & NONLINEAR_MATRICES%ELEMENT_RESIDUAL%VECTOR(element_dof_idx)+ &
                       & GAUSS_WEIGHT*Jxxi*COMPONENT_QUADRATURE_SCHEME%GAUSS_BASIS_FNS(parameter_idx,1,gauss_idx)* &
                       & (Jznu-1.0_DP)
-                      
-                    !PRINT *, "element_dof_idx=", element_dof_idx, " new value: ", &
-                    ! & NONLINEAR_MATRICES%ELEMENT_RESIDUAL%VECTOR(element_dof_idx)
                   ENDIF
                 ENDDO
               ELSEIF(DEPENDENT_COMPONENT_INTERPOLATION_TYPE==FIELD_ELEMENT_BASED_INTERPOLATION) THEN !element based
@@ -3409,7 +3387,6 @@ CONTAINS
     REAL(DP) :: ISOMETRIC_FORCE_AT_FULL_ACT,LENGTH_HALF_SARCO
     REAL(DP) :: TITIN_VALUE,TITIN_VALUE_CROSS_FIBRE,TITIN_UNBOUND,TITIN_BOUND
     REAL(DP) :: TITIN_UNBOUND_CROSS_FIBRE,TITIN_BOUND_CROSS_FIBRE
-    CHARACTER(LEN=3) :: STR
 
     ENTERS("FINITE_ELASTICITY_GAUSS_CAUCHY_TENSOR",ERR,ERROR,*999)
 
@@ -3451,9 +3428,6 @@ CONTAINS
     DO i=1,3
       IDENTITY(i,i)=1.0_DP
     ENDDO
-
-
-    !PRINT*, "  C=", AZL,", det(C)=",AZU,", E=",E,", S=", PIOLA_TENSOR,", Jznu=",Jznu
 
     SELECT CASE(EQUATIONS_SET_SUBTYPE)
     CASE(EQUATIONS_SET_NEARLY_INCOMPRESSIBLE_MOONEY_RIVLIN_SUBTYPE)
@@ -3911,19 +3885,13 @@ CONTAINS
       delta_t=0.001_DP;
       velo=(dist2-dist1)/delta_t ! velo>0 == lengthening
       !conversion of velocity at the continuum macroscale to the micromechanical cell model half-sarcomere velocity
-      velo=velo*5.0e-8_DP  
+      velo=velo*5.0e-8_DP 
 !      velo=velo*5.0e-2_DP
 !      velo=velo*5.0e-7_DP 
 
       CALL FIELD_PARAMETER_SET_UPDATE_GAUSS_POINT(DEPENDENT_FIELD,FIELD_U1_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,GAUSS_POINT_NUMBER, &
         & ELEMENT_NUMBER,2,velo,ERR,ERROR,*999)
 
-      !NULLIFY(FIELD_VARIABLE)
-      !CALL FIELD_VARIABLE_GET(DEPENDENT_FIELD,FIELD_U1_VARIABLE_TYPE,FIELD_VARIABLE,ERR,ERROR,*999)
-      !dof_idx=FIELD_VARIABLE%COMPONENTS(2)%PARAM_TO_DOF_MAP%GAUSS_POINT_PARAM2DOF_MAP%GAUSS_POINTS(GAUSS_POINT_NUMBER, &
-      !  & ELEMENT_NUMBER)
-      !CALL DISTRIBUTED_VECTOR_VALUES_SET(FIELD_VARIABLE%PARAMETER_SETS%SET_TYPE(FIELD_VALUES_SET_TYPE)%PTR%PARAMETERS,dof_idx, &
-      !  & velo,ERR,ERROR,*999)
       
       !--------------------------------------------------------------------------------------------
       NULLIFY(INDEPENDENT_FIELD)
@@ -4177,7 +4145,7 @@ CONTAINS
       lambda_f=SQRT(AZL(1,1))
       CALL FIELD_PARAMETER_SET_UPDATE_GAUSS_POINT(DEPENDENT_FIELD,FIELD_U1_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,GAUSS_POINT_NUMBER, &
         & ELEMENT_NUMBER,1,lambda_f,ERR,ERROR,*999)
-    ! end case 
+
 
     CASE(EQUATIONS_SET_1D3D_MONODOMAIN_ACTIVE_STRAIN_SUBTYPE)
 
@@ -4268,7 +4236,6 @@ CONTAINS
       PIOLA_TENSOR(2,1)=PIOLA_TENSOR(1,2)
       PIOLA_TENSOR(2,2)=2.0_DP*(C(1)+C(2)*(AZL(3,3)+AZL(1,1)))+P*AZU(2,2)
 
-      !PRINT*, "  PIOLA_TENSOR = ", PIOLA_TENSOR
 
       SELECT CASE(EQUATIONS_SET_SUBTYPE)
       CASE(EQUATIONS_SET_MOONEY_RIVLIN_ACTIVECONTRACTION_SUBTYPE)
@@ -4300,43 +4267,13 @@ CONTAINS
         !passive anisotropic stiffness -- only in the tension range
         IF(AZL(1,1) > 1.0_DP) THEN
           PIOLA_TENSOR(1,1)=PIOLA_TENSOR(1,1)+C(3)/AZL(1,1)*(AZL(1,1)**(C(4)/2.0_DP)-1.0_DP)
-          !PRINT*, "PIOLA_TENSOR(1,1): ",PIOLA_TENSOR(1,1)
         ENDIF
         !active stress component
         CALL Field_ParameterSetGetLocalGaussPoint(EQUATIONS_SET%INDEPENDENT%INDEPENDENT_FIELD, & 
           &  FIELD_U_VARIABLE_TYPE,FIELD_VALUES_SET_TYPE,GAUSS_POINT_NUMBER,ELEMENT_NUMBER,1,VALUE, &
           & ERR,ERROR,*999)
-          
-        !PRINT*, "get value of active stress component: ", VALUE
-        
-        
-        ! Check if value is NaN. The standard way with ISNAN(VALUE) or VALUE != VALUE does not work with gfortran on cray
-        Write(Str, "(F3.5)") VALUE
-        !Print*, "STR=[", TRIM(STR), "]"
-        
-        IF (Str == "NaN") THEN
-          VALUE = 0.0_DP
-          !PRINT*, "Replace value by 0.0!"
-        ENDIF
-        
-        
-        !IF (ISNAN(VALUE)) THEN
-        !  PRINT*, "Value is NaN!"
-        !  VALUE = 0.0_DP
-        !ELSE
-        !  PRINT*, "Value is not NaN."
-        !ENDIF
-        
-        !IF (VALUE == VALUE) THEN
-        !  PRINT*, "VALUE == VALUE"
-        !ELSE
-        !  PRINT*, "VALUE != VALUE"
-        !ENDIF
-          
         !divide by lambda and multiply by P_max
         VALUE=VALUE/SQRT(AZL(1,1))*C(5)
-        
-        !PRINT*, "AZL(1,1): ", AZL(1,1), ", C(5): ", C(5), ", normalized: ", VALUE
         
         !HINDAWI paper - force-length relation at the continuum level
 !        if((SQRT(AZL(1,1))>0.72_DP).AND.(SQRT(AZL(1,1))<1.68_DP)) then
@@ -4548,9 +4485,6 @@ CONTAINS
 
       END SELECT
 
-      !PRINT*, "  PIOLA_TENSOR = ", PIOLA_TENSOR
-
-    ! end case EQUATIONS_SET_MOONEY_RIVLIN_SUBTYPE
 
     CASE(EQUATIONS_SET_TRANS_ISOTROPIC_ACTIVE_TRANSITION_SUBTYPE)
       !Equations set for transversely isotropic (fibre-reinforced), active contractible bodies consitisting of two materials
@@ -5045,9 +4979,6 @@ CONTAINS
     CALL MATRIX_PRODUCT(TEMP,DZDNUT,CAUCHY_TENSOR,ERR,ERROR,*999)
     
     CAUCHY_TENSOR=CAUCHY_TENSOR/Jznu
-    
-    !PRINT*, "  devide CAUCHY_TENSOR by Jznu=",Jznu,", CAUCHY_TENSOR=",CAUCHY_TENSOR
-    
     IF(DIAGNOSTICS1) THEN
       CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"  ELEMENT_NUMBER = ",ELEMENT_NUMBER,ERR,ERROR,*999)
       CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"  gauss_idx = ",GAUSS_POINT_NUMBER,ERR,ERROR,*999)
@@ -7397,9 +7328,8 @@ CONTAINS
                  CALL FIELD_NUMBER_OF_COMPONENTS_CHECK(EQUATIONS_SET_SETUP%FIELD,FIELD_U_VARIABLE_TYPE,5, &
                    & ERR,ERROR,*999)
                ENDIF
-               ! disable this check to allow intermediate versions of iron that are currently worked on
-               !CALL FIELD_NUMBER_OF_COMPONENTS_CHECK(EQUATIONS_SET_SETUP%FIELD,FIELD_V_VARIABLE_TYPE,NUMBER_OF_DIMENSIONS+2, &
-               !  & ERR,ERROR,*999)
+               CALL FIELD_NUMBER_OF_COMPONENTS_CHECK(EQUATIONS_SET_SETUP%FIELD,FIELD_V_VARIABLE_TYPE,NUMBER_OF_DIMENSIONS+1, &
+                 & ERR,ERROR,*999)
                SELECT CASE(EQUATIONS_SET%SOLUTION_METHOD)
                CASE(EQUATIONS_SET_FEM_SOLUTION_METHOD)
                  !do/check nothing???

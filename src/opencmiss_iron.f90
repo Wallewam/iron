@@ -62601,7 +62601,7 @@ CONTAINS
   END SUBROUTINE cmfe_PrintHistory
 
  !================================================================================================================================
-  !FOllowing subroutine extract the local coordinates of a node w.r.t an elements
+  !FOllowing subroutine extract the local coordinates of a node, nodeIdx.
  ! ===============================================================================================================================
 
   SUBROUTINE cmfe_MeshNodeXiGet(Mesh,NOdeIdx,LocalCoordinates,Err)
@@ -62644,27 +62644,6 @@ CONTAINS
           & REAL(Mesh%MESH%TOPOLOGY(1)%PTR%ELEMENTS%ELEMENTS(1)%BASIS%INTERPOLATION_ORDER,DP)
 
     END DO
-    ! the following bit extracts local coordinates of a node  wrt to an ElementIdx
-    ! this will execute if the optioan parameter is provided
-!    IF( PRESENT(ElementIdx)) THEN
-
-!      IF(ANY (LocalCoordinates(:,1)  == ElementIdx)) THEN
-
-!        DO ii = 1 , size(LocalCoordinates(:,1))
-
-!          IF(LocalCoordinates(ii,1) == ElementIdx ) THEN
-
-!            ALLOCATE(SomeArray(NUMBER_OF_XI))
-!            SomeArray = LocalCoordinates(ii,2:)
-!            DEALLOCATE(LocalCoordinates)
-!            ALLOCATE(LocalCoordinates(1,NUMBER_OF_XI))
-!            LocalCoordinates(1,:) = SomeArray(:)
-
-!            EXIT
-!          END IF
-!        END DO
-!      END IF     
-!    END IF
 
     EXITS("cmfe_MeshNodeXiGet")
     RETURN
@@ -62675,17 +62654,15 @@ CONTAINS
 
   END SUBROUTINE cmfe_MeshNodeXiGet
 ! ==================================================================================!
-!!!!!!!!! THE FOLLWOING SUBROUTINE GIVES  NODES   OF AN ELEMENT !!!!!!!!!!!!!!!!!!!!!
+!  The following subroutine gives nodes corresponding to ElementIdx
 ! ==================================================================================!
-  SUBROUTINE cmfe_Mesh_ElementNOdesGet(Mesh,ElementIdx,ElementNOdes,Err)
+  SUBROUTINE cmfe_Mesh_ElementNOdesGet(Mesh, ElementIdx, ElementNOdes,Err)
     ! Argument variables
     TYPE(cmfe_MeshType), INTENT(IN)               :: Mesh
     INTEGER(INTG), INTENT(IN)                     :: ElementIdx
     INTEGER(INTG), INTENT(OUT)                    :: Err !<The error code.
     INTEGER(INTG), INTENT(OUT),ALLOCATABLE        :: ElementNOdes(:)
 
-
-    !! allcate size of the output data structure
     ENTERS("cmfe_Mesh_ElementNOdesGet.",err,error,*999)
  
     ALLOCATE(ElementNOdes &

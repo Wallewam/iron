@@ -1390,9 +1390,7 @@ CONTAINS
     !Local variables
 
     ENTERS("INVERT_FULL_SP",ERR,ERROR,*999)
-      
-    print *, A
-   stop
+
     IF(SIZE(A,1)==SIZE(A,2)) THEN
       IF(SIZE(B,1)==SIZE(A,1).AND.SIZE(B,2)==SIZE(A,2)) THEN
         SELECT CASE(SIZE(A,1)) 
@@ -1401,7 +1399,7 @@ CONTAINS
           IF(ABS(DET)>ZERO_TOLERANCE_SP) THEN
             B(1,1)=1.0_SP/A(1,1)
           ELSE
-            CALL FLAG_WARNING("Matrix A is zero and cannot be inverted (SP)",ERR,ERROR,*999)
+            CALL FLAG_WARNING("Matrix A is zero and cannot be inverted",ERR,ERROR,*999)
             B(1,1)=0.0_DP
           ENDIF
         CASE(2)
@@ -1475,8 +1473,6 @@ CONTAINS
             B(1,1)=1.0_DP/A(1,1)
           ELSE
             CALL FLAG_WARNING("Matrix A is zero and cannot be inverted",ERR,ERROR,*999)
-            PRINT *, "Abort execution in maths.f90:1476"
-            STOP
             B(1,1)=0.0_DP
           ENDIF
         CASE(2)

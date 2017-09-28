@@ -199,40 +199,27 @@ CONTAINS
     LOGICAL :: OWNED_BY_ALL,SEND_GLOBAL
     TYPE(LIST_PTR_TYPE), ALLOCATABLE :: GHOST_SEND_LISTS(:),GHOST_RECEIVE_LISTS(:)
     TYPE(VARYING_STRING) :: LOCAL_ERROR,DUMMY_ERROR
-    INTEGER(INTG), SAVE :: CALL_COUNTER = 1
-    LOGICAL :: DEBUGGING = .FALSE.       ! more debugging output
-    LOGICAL :: DEBUGGING2 = .FALSE.       ! less debugging output
-    !DEBUGGING = .TRUE.
-    
-    CALL_COUNTER = CALL_COUNTER + 1
-    
+
     ENTERS("DOMAIN_MAPPINGS_LOCAL_FROM_GLOBAL_CALCULATE",ERR,ERROR,*999)
 
     IF(ASSOCIATED(DOMAIN_MAPPING)) THEN
       my_computational_node_number=COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR)
       IF(ERR/=0) GOTO 999        
-      
       !Calculate local to global maps from global to local map
       ALLOCATE(DOMAIN_MAPPING%NUMBER_OF_DOMAIN_LOCAL(0:DOMAIN_MAPPING%NUMBER_OF_DOMAINS-1),STAT=ERR)
       IF(ERR/=0) CALL FlagError("Could not allocate number of domain local.",ERR,ERROR,*999)
       DOMAIN_MAPPING%NUMBER_OF_DOMAIN_LOCAL=0
-      
       ALLOCATE(DOMAIN_MAPPING%NUMBER_OF_DOMAIN_GHOST(0:DOMAIN_MAPPING%NUMBER_OF_DOMAINS-1),STAT=ERR)
       IF(ERR/=0) CALL FlagError("Could not allocate number of domain ghost.",ERR,ERROR,*999)
-      
       DOMAIN_MAPPING%NUMBER_OF_DOMAIN_GHOST=0
-      NUMBER_INTERNAL=0   ! counters for my computational node
+      NUMBER_INTERNAL=0
       NUMBER_BOUNDARY=0
       NUMBER_GHOST=0
       ALLOCATE(ADJACENT_DOMAINS(0:DOMAIN_MAPPING%NUMBER_OF_DOMAINS-1,0:DOMAIN_MAPPING%NUMBER_OF_DOMAINS-1),STAT=ERR)
       IF(ERR/=0) CALL FlagError("Could not allocate adjacent domains.",ERR,ERROR,*999)
       ADJACENT_DOMAINS=0
-      
-      ! loop over global elements
       DO global_number=1,DOMAIN_MAPPING%NUMBER_OF_GLOBAL
-        !-------- If necessary, reset global domain index so that my computational node is in the first index position ------------
-        !find out current domain index of my computational node
-
+        !If necessary, reset global domain index so that my computational node is in the first index position
         MY_DOMAIN_INDEX=1
         DO domain_idx=2,DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(global_number)%NUMBER_OF_DOMAINS
           domain_no=DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(global_number)%DOMAIN_NUMBER(domain_idx)
@@ -241,27 +228,20 @@ CONTAINS
             EXIT
           ENDIF
         ENDDO !domain_idx
-        
-        !if necessary, swap the data structure at the current domain index for my computational node with domain index 1
-        IF(MY_DOMAIN_INDEX/=1) THEN
-          !Swap domain index in the global to local map, 1 <-> MY_DOMAIN_INDEX
+        IF(MY_DOMAIN_INDEX/=1) THEN !Swap domain index in the global to local map
           TEMP=DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(global_number)%LOCAL_NUMBER(1)
           DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(global_number)%LOCAL_NUMBER(1) = &
             & DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(global_number)%LOCAL_NUMBER(MY_DOMAIN_INDEX)
           DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(global_number)%LOCAL_NUMBER(MY_DOMAIN_INDEX) = TEMP
-          
           TEMP=DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(global_number)%DOMAIN_NUMBER(1)
           DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(global_number)%DOMAIN_NUMBER(1) = &
             & DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(global_number)%DOMAIN_NUMBER(MY_DOMAIN_INDEX)
           DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(global_number)%DOMAIN_NUMBER(MY_DOMAIN_INDEX) = TEMP
-          
           TEMP=DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(global_number)%LOCAL_TYPE(1)
           DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(global_number)%LOCAL_TYPE(1) = &
             & DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(global_number)%LOCAL_TYPE(MY_DOMAIN_INDEX)
           DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(global_number)%LOCAL_TYPE(MY_DOMAIN_INDEX) = TEMP
         ENDIF
-        
-        !set the global adjacent_domains array to 1 for domains that share the current element
         DO domain_idx=1,DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(global_number)%NUMBER_OF_DOMAINS
           domain_no=DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(global_number)%DOMAIN_NUMBER(domain_idx)
           DO domain_idx2=1,DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(global_number)%NUMBER_OF_DOMAINS
@@ -269,19 +249,14 @@ CONTAINS
             ADJACENT_DOMAINS(domain_no,domain_no2)=1
           ENDDO !domain_idx2
         ENDDO !domain_idx
-        
-        !loop over domains where current element is
         DO domain_idx=1,DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(global_number)%NUMBER_OF_DOMAINS
           domain_no=DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(global_number)%DOMAIN_NUMBER(domain_idx)
           local_type=DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(global_number)%LOCAL_TYPE(domain_idx)
-          !increment counter of total ghost/local elements per domain
           IF(local_type==DOMAIN_LOCAL_GHOST) THEN
             DOMAIN_MAPPING%NUMBER_OF_DOMAIN_GHOST(domain_no)=DOMAIN_MAPPING%NUMBER_OF_DOMAIN_GHOST(domain_no)+1
           ELSE
             DOMAIN_MAPPING%NUMBER_OF_DOMAIN_LOCAL(domain_no)=DOMAIN_MAPPING%NUMBER_OF_DOMAIN_LOCAL(domain_no)+1
           ENDIF
-          
-          !increment counter of internal, boundary and ghost elements on my domain
           IF(domain_no==my_computational_node_number) THEN
             SELECT CASE(local_type)
             CASE(DOMAIN_LOCAL_INTERNAL)
@@ -300,7 +275,6 @@ CONTAINS
       ENDDO !global_number
 
       !!TODO: move adjacent domains calculation back to where the global to local array is set up????
-      !count number of adjacent domains for my domain and in total
       NUMBER_OF_ADJACENT_DOMAINS=0
       TOTAL_NUMBER_OF_ADJACENT_DOMAINS=0
       DO domain_no=0,DOMAIN_MAPPING%NUMBER_OF_DOMAINS-1
@@ -313,14 +287,10 @@ CONTAINS
           ENDIF
         ENDDO !domain_no2
       ENDDO !domain_no
-      
       ALLOCATE(DOMAIN_MAPPING%ADJACENT_DOMAINS_PTR(0:DOMAIN_MAPPING%NUMBER_OF_DOMAINS),STAT=ERR)
       IF(ERR/=0) CALL FlagError("Could not allocate adjacent domains ptr.",ERR,ERROR,*999)
       ALLOCATE(DOMAIN_MAPPING%ADJACENT_DOMAINS_LIST(TOTAL_NUMBER_OF_ADJACENT_DOMAINS),STAT=ERR)
       IF(ERR/=0) CALL FlagError("Could not allocate adjacent domains list.",ERR,ERROR,*999)
-      
-      ! store the adjacent domains for a domain in ADJACENT_DOMAINS_LIST starting at index COUNT and store the starting index COUNT in ADJACENT_DOMAINS_PTR
-      ! the adjacent domains for a domain are then ADJACENT_DOMAINS_LIST(ADJACENT_DOMAINS_PTR(domain) : ADJACENT_DOMAINS_PTR(domain+1))
       COUNT=1
       DO domain_no=0,DOMAIN_MAPPING%NUMBER_OF_DOMAINS-1
         DOMAIN_MAPPING%ADJACENT_DOMAINS_PTR(domain_no)=COUNT
@@ -333,17 +303,12 @@ CONTAINS
           ENDIF
         ENDDO !domain_no2
       ENDDO !domain_no
-      
       DOMAIN_MAPPING%ADJACENT_DOMAINS_PTR(DOMAIN_MAPPING%NUMBER_OF_DOMAINS)=COUNT
       DEALLOCATE(ADJACENT_DOMAINS)
-      
-      !compute domain list for my computational node
       ALLOCATE(DOMAIN_MAPPING%DOMAIN_LIST(NUMBER_INTERNAL+NUMBER_BOUNDARY+NUMBER_GHOST),STAT=ERR)
       IF(ERR/=0) CALL FlagError("Could not allocate domain map domain list.",ERR,ERROR,*999)
       ALLOCATE(DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(NUMBER_INTERNAL+NUMBER_BOUNDARY+NUMBER_GHOST),STAT=ERR)
       IF(ERR/=0) CALL FlagError("Could not allocate domain map local to global list.",ERR,ERROR,*999)
-      
-      !set constants
       DOMAIN_MAPPING%TOTAL_NUMBER_OF_LOCAL=NUMBER_INTERNAL+NUMBER_BOUNDARY+NUMBER_GHOST
       DOMAIN_MAPPING%NUMBER_OF_LOCAL=NUMBER_INTERNAL+NUMBER_BOUNDARY
       DOMAIN_MAPPING%NUMBER_OF_INTERNAL=NUMBER_INTERNAL
@@ -355,94 +320,53 @@ CONTAINS
       DOMAIN_MAPPING%BOUNDARY_FINISH=NUMBER_INTERNAL+NUMBER_BOUNDARY
       DOMAIN_MAPPING%GHOST_START=NUMBER_INTERNAL+NUMBER_BOUNDARY+1
       DOMAIN_MAPPING%GHOST_FINISH=NUMBER_INTERNAL+NUMBER_BOUNDARY+NUMBER_GHOST
-      
-      ! adjacent_domains maps a domain index (index between 1 and DOMAIN_MAPPING%NUMBER_OF_ADJACENT_DOMAINS) to the domain number
+      NUMBER_INTERNAL=0
+      NUMBER_BOUNDARY=0
+      NUMBER_GHOST=0
       ALLOCATE(DOMAIN_MAPPING%ADJACENT_DOMAINS(NUMBER_OF_ADJACENT_DOMAINS),STAT=ERR)
       IF(ERR/=0) CALL FlagError("Could not allocate adjacent domains.",ERR,ERROR,*999)
       DOMAIN_MAPPING%NUMBER_OF_ADJACENT_DOMAINS=NUMBER_OF_ADJACENT_DOMAINS
-      
-      ! adjacent_domain_map maps a domain number back to its index (index between 1 and DOMAIN_MAPPING%NUMBER_OF_ADJACENT_DOMAINS)
       ALLOCATE(ADJACENT_DOMAIN_MAP(0:DOMAIN_MAPPING%NUMBER_OF_DOMAINS-1),STAT=ERR)
       IF(ERR/=0) CALL FlagError("Could not allocate adjacent domain map.",ERR,ERROR,*999)
-      
-      ! ghost_send_lists contains a list for each adjacent domain with elements in my domain (by local element numbers) that will be sent to that foreign domain
       ALLOCATE(GHOST_SEND_LISTS(DOMAIN_MAPPING%NUMBER_OF_ADJACENT_DOMAINS),STAT=ERR)
       IF(ERR/=0) CALL FlagError("Could not allocate ghost send list.",ERR,ERROR,*999)
-      
-      ! ghost_receive_lists contains a list for each adjacent domain and contains the local numbers of ghost elements that can be received from that foreign domain
       ALLOCATE(GHOST_RECEIVE_LISTS(DOMAIN_MAPPING%NUMBER_OF_ADJACENT_DOMAINS),STAT=ERR)
       IF(ERR/=0) CALL FlagError("Could not allocate ghost recieve list.",ERR,ERROR,*999)
-      
-      ! set adjacent domains data structures and initialize ghost send and receive lists
-      ! loop over adjacent domains of my computational node
       DO domain_idx=1,DOMAIN_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
-        ! set variables to 0
         CALL DOMAIN_MAPPINGS_ADJACENT_DOMAIN_INITIALISE(DOMAIN_MAPPING%ADJACENT_DOMAINS(domain_idx),ERR,ERROR,*999)
-        
-        ! get number of current adjacent domain
         domain_no= &
           & DOMAIN_MAPPING%ADJACENT_DOMAINS_LIST(DOMAIN_MAPPING%ADJACENT_DOMAINS_PTR(my_computational_node_number)+domain_idx-1)
-          
-        ! set number in adjacent_domains and adjacent_domain_map
         DOMAIN_MAPPING%ADJACENT_DOMAINS(domain_idx)%DOMAIN_NUMBER=domain_no
         ADJACENT_DOMAIN_MAP(domain_no)=domain_idx
-        
-        ! initialize send and receive lists for ghosts
         NULLIFY(GHOST_SEND_LISTS(domain_idx)%PTR)
         CALL LIST_CREATE_START(GHOST_SEND_LISTS(domain_idx)%PTR,ERR,ERROR,*999)
         CALL LIST_DATA_TYPE_SET(GHOST_SEND_LISTS(domain_idx)%PTR,LIST_INTG_TYPE,ERR,ERROR,*999)
         CALL LIST_INITIAL_SIZE_SET(GHOST_SEND_LISTS(domain_idx)%PTR,MAX(DOMAIN_MAPPING%NUMBER_OF_GHOST,1),ERR,ERROR,*999)
         CALL LIST_CREATE_FINISH(GHOST_SEND_LISTS(domain_idx)%PTR,ERR,ERROR,*999)
-        
         NULLIFY(GHOST_RECEIVE_LISTS(domain_idx)%PTR)
         CALL LIST_CREATE_START(GHOST_RECEIVE_LISTS(domain_idx)%PTR,ERR,ERROR,*999)
         CALL LIST_DATA_TYPE_SET(GHOST_RECEIVE_LISTS(domain_idx)%PTR,LIST_INTG_TYPE,ERR,ERROR,*999)
         CALL LIST_INITIAL_SIZE_SET(GHOST_RECEIVE_LISTS(domain_idx)%PTR,MAX(DOMAIN_MAPPING%NUMBER_OF_GHOST,1),ERR,ERROR,*999)
         CALL LIST_CREATE_FINISH(GHOST_RECEIVE_LISTS(domain_idx)%PTR,ERR,ERROR,*999)
       ENDDO !domain_idx
-      
-      NUMBER_INTERNAL=0
-      NUMBER_BOUNDARY=0
-      NUMBER_GHOST=0
-      
-      ! CALL_COUNTER == 27 is the case when FIELD_VARIABLE_DOFS_MAPPING for IndependentFieldM CMFE_FIELD_U2_VARIABLE_TYPE: ("contraction_velocity") gets calculated
-      IF (CALL_COUNTER == 27 .AND. my_computational_node_number == 0) THEN
-        DEBUGGING = .TRUE.
-        PRINT *, "domain_mappings.f90:409 (DOMAIN_MAPPINGS_LOCAL_FROM_GLOBAL_CALCULATE): " // &
-          & " Receive and send indices will be computed here. (process 0)"
-      ENDIF
-      DEBUGGING = .FALSE.
-      
-      ! loop over global elements
       DO global_number=1,DOMAIN_MAPPING%NUMBER_OF_GLOBAL
         SEND_GLOBAL=.FALSE.
-        
-        ! set RECEIVE_FROM_DOMAIN and SEND_GLOBAL
-        ! if element is on multiple domains
         IF(DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(global_number)%NUMBER_OF_DOMAINS>1) THEN
-          
           !Check if we have a special case where the global number is owned by all domains e.g., as in a constant field
           IF(DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(global_number)%NUMBER_OF_DOMAINS==DOMAIN_MAPPING%NUMBER_OF_DOMAINS) THEN
             OWNED_BY_ALL=.TRUE.
-          
-            ! check if the element is an internal element on all domains
             DO domain_idx=1,DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(global_number)%NUMBER_OF_DOMAINS
               local_type=DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(global_number)%LOCAL_TYPE(domain_idx)
               OWNED_BY_ALL=OWNED_BY_ALL.AND.local_type==DOMAIN_LOCAL_INTERNAL
             ENDDO !domain_idx
           ELSE
-            OWNED_BY_ALL=.FALSE.
+            OWNED_BY_ALL=.FALSE.            
           ENDIF
-          
-          ! if the element is not owned by all domains
           IF(.NOT.OWNED_BY_ALL) THEN
             RECEIVE_FROM_DOMAIN=-1
-            
-            ! loop over the domains where the current element is present
             DO domain_idx=1,DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(global_number)%NUMBER_OF_DOMAINS
               domain_no=DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(global_number)%DOMAIN_NUMBER(domain_idx)
               local_type=DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(global_number)%LOCAL_TYPE(domain_idx)
-              
               IF(local_type/=DOMAIN_LOCAL_GHOST) THEN
                 IF(domain_no==my_computational_node_number) SEND_GLOBAL=.TRUE.
                 IF(RECEIVE_FROM_DOMAIN==-1) THEN
@@ -455,187 +379,61 @@ CONTAINS
                 ENDIF
               ENDIF
             ENDDO !domain_idx
-            
             IF(RECEIVE_FROM_DOMAIN==-1) THEN
               LOCAL_ERROR="Invalid domain mapping. Global number "//TRIM(NUMBER_TO_VSTRING(global_number,"*",ERR,ERROR))// &
                 & " is not owned by any domain."
               CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)          
             ENDIF
           ENDIF
-            
-          IF (DEBUGGING) THEN
-            PRINT "(A,I4,A,L,A,I4)", "element            global", global_number,&
-              & " is on multiple domains, SEND_GLOBAL=",SEND_GLOBAL,&
-              & ", RECEIVE_FROM_DOMAIN=",RECEIVE_FROM_DOMAIN
-          ENDIF
-          
         ENDIF
-        
-        ! loop over domains of current element
         DO domain_idx=1,DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(global_number)%NUMBER_OF_DOMAINS
           domain_no=DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(global_number)%DOMAIN_NUMBER(domain_idx)
           local_number=DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(global_number)%LOCAL_NUMBER(domain_idx)
           local_type=DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(global_number)%LOCAL_TYPE(domain_idx)
-          
           IF(domain_no==my_computational_node_number) THEN
-            ! set local number
             DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(local_number)=global_number
-            
-            ! set entry of current element in domain_list
             SELECT CASE(DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(global_number)%LOCAL_TYPE(domain_idx))
             CASE(DOMAIN_LOCAL_INTERNAL)
-              IF (DEBUGGING) PRINT "(3(A,I4),A)", "element local",local_number,", global", global_number,", domain ", domain_idx, &
-                & " is internal"
               NUMBER_INTERNAL=NUMBER_INTERNAL+1
               DOMAIN_MAPPING%DOMAIN_LIST(NUMBER_INTERNAL)=local_number
             CASE(DOMAIN_LOCAL_BOUNDARY)
-              IF (DEBUGGING) PRINT "(3(A,I4),A)", "element local",local_number,", global", global_number,", domain ", domain_idx, &
-                & " is boundary"
               NUMBER_BOUNDARY=NUMBER_BOUNDARY+1
               DOMAIN_MAPPING%DOMAIN_LIST(DOMAIN_MAPPING%INTERNAL_FINISH+NUMBER_BOUNDARY)=local_number
             CASE(DOMAIN_LOCAL_GHOST)
-              IF (DEBUGGING) PRINT "(3(A,I4),A,I2)", "element local",local_number,", global", global_number,&
-                & ", domain ", domain_idx, " is ghost, receive from process (not idx):", RECEIVE_FROM_DOMAIN
               NUMBER_GHOST=NUMBER_GHOST+1
               DOMAIN_MAPPING%DOMAIN_LIST(DOMAIN_MAPPING%BOUNDARY_FINISH+NUMBER_GHOST)=local_number
-              
-              
-              ! add local number of ghost element to receive list of domain from which to receive
               CALL LIST_ITEM_ADD(GHOST_RECEIVE_LISTS(ADJACENT_DOMAIN_MAP(RECEIVE_FROM_DOMAIN))%PTR,local_number,ERR,ERROR,*999)
-              
-              IF (DEBUGGING) THEN
-                PRINT "(A,I2,A)", "    add to receive list ", RECEIVE_FROM_DOMAIN,":"
-                DO idx=1,GHOST_RECEIVE_LISTS(ADJACENT_DOMAIN_MAP(RECEIVE_FROM_DOMAIN))%PTR%NUMBER_IN_LIST
-                  WRITE(*,"(I4)",advance='no') GHOST_RECEIVE_LISTS(ADJACENT_DOMAIN_MAP(RECEIVE_FROM_DOMAIN))%PTR%LIST_INTG(idx)
-                ENDDO
-                PRINT *,""
-              ENDIF
             CASE DEFAULT
               LOCAL_ERROR="The domain local type of "//TRIM(NUMBER_TO_VSTRING(DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP( &
                 & global_number)%LOCAL_TYPE(domain_idx),"*",ERR,ERROR))//" is invalid."
               CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
             END SELECT
-            
           ELSE IF(SEND_GLOBAL.AND.local_type==DOMAIN_LOCAL_GHOST) THEN
             local_number2=DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(global_number)%LOCAL_NUMBER(1) !The local number for this node
             CALL LIST_ITEM_ADD(GHOST_SEND_LISTS(ADJACENT_DOMAIN_MAP(domain_no))%PTR,local_number2,ERR,ERROR,*999)
-            
-            IF (DEBUGGING) PRINT "(3(A,I4),A,I4,A)", "element local",local_number,", global", global_number, &
-              & ", domain ", domain_idx," is ghost, send global from my domain (1) (where it is local ", local_number2,")"
-              
           ENDIF
         ENDDO !domain_idx
       ENDDO !global_number
       
-      IF(DOMAIN_MAPPING%NUMBER_OF_ADJACENT_DOMAINS == 1) THEN
-        IF(GHOST_RECEIVE_LISTS(1)%PTR%NUMBER_IN_LIST > 3) THEN
-          IF(GHOST_RECEIVE_LISTS(1)%PTR%LIST_INTG(1) == 43 .AND. GHOST_RECEIVE_LISTS(1)%PTR%LIST_INTG(2) == 44 &
-            & .AND. GHOST_RECEIVE_LISTS(1)%PTR%LIST_INTG(3) == 45) THEN
-            !DEBUGGING = .TRUE.
-          ENDIF
-        ENDIF
-      ENDIF
-      
-      ! print receive and send lists
-      IF (CALL_COUNTER == 27 .AND. (DEBUGGING.OR.DEBUGGING2)) THEN
-        
-        DO domain_idx=1,DOMAIN_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
-          PRINT "(I1,A,I3)", my_computational_node_number, ": call no", CALL_COUNTER
-          PRINT "(I1,A,I3,A)", my_computational_node_number, ": domain ",domain_idx, ", ghost send list (initial):"
-          PRINT "(A)", "   idx   local  global"
-          
-          DO idx=1,GHOST_SEND_LISTS(domain_idx)%PTR%NUMBER_IN_LIST
-            
-            local_number = GHOST_SEND_LISTS(domain_idx)%PTR%LIST_INTG(idx)
-            
-            IF (local_number == 0) CYCLE
-            global_number = DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(local_number)
-            
-            PRINT "(I1,A,I4,A,I4,A,I4)", my_computational_node_number, ": ",idx, ",", local_number,",",global_number
-          ENDDO
-          
-          PRINT "(I1,A,I3,A)", my_computational_node_number, ": domain ",domain_idx, ", ghost receive list (initial):"
-          PRINT "(A)", "   idx   local  global"
-          
-          DO idx=1,GHOST_RECEIVE_LISTS(domain_idx)%PTR%NUMBER_IN_LIST
-            
-            local_number = GHOST_RECEIVE_LISTS(domain_idx)%PTR%LIST_INTG(idx)
-            
-            IF (local_number == 0) CYCLE
-            global_number = DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(local_number)
-            
-            PRINT "(I1,A,I4,A,I4,A,I4)", my_computational_node_number, ": ",idx, ",", local_number,",",global_number
-          ENDDO
-        ENDDO
-        
-      ENDIF
-      
-      ! loop over adjacent domains
       DO domain_idx=1,DOMAIN_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
-        
-        ! transfer the ghost_send_list for adjacent domain to LOCAL_GHOST_SEND_INDICES
-        CALL LIST_REMOVE_DUPLICATES_WITHOUT_SORTING(GHOST_SEND_LISTS(domain_idx)%PTR,ERR,ERROR,*999)
+        CALL LIST_REMOVE_DUPLICATES(GHOST_SEND_LISTS(domain_idx)%PTR,ERR,ERROR,*999)
         CALL LIST_DETACH_AND_DESTROY(GHOST_SEND_LISTS(domain_idx)%PTR,NUMBER_OF_GHOST_SEND,SEND_LIST,ERR,ERROR,*999)
-        
         ALLOCATE(DOMAIN_MAPPING%ADJACENT_DOMAINS(domain_idx)%LOCAL_GHOST_SEND_INDICES(NUMBER_OF_GHOST_SEND),STAT=ERR)
         IF(ERR/=0) CALL FlagError("Could not allocate local ghost send inidices.",ERR,ERROR,*999)
-        
         DOMAIN_MAPPING%ADJACENT_DOMAINS(domain_idx)%LOCAL_GHOST_SEND_INDICES(1:NUMBER_OF_GHOST_SEND)= &
           & SEND_LIST(1:NUMBER_OF_GHOST_SEND)
-          
         DOMAIN_MAPPING%ADJACENT_DOMAINS(domain_idx)%NUMBER_OF_SEND_GHOSTS=NUMBER_OF_GHOST_SEND
         DEALLOCATE(SEND_LIST)
-        
-        ! transfer the ghost_receive_lists for the current adjacent domain to LOCAL_GHOST_RECEIVE_INDICES
-        CALL LIST_REMOVE_DUPLICATES_WITHOUT_SORTING(GHOST_RECEIVE_LISTS(domain_idx)%PTR,ERR,ERROR,*999)
+        CALL LIST_REMOVE_DUPLICATES(GHOST_RECEIVE_LISTS(domain_idx)%PTR,ERR,ERROR,*999)
         CALL LIST_DETACH_AND_DESTROY(GHOST_RECEIVE_LISTS(domain_idx)%PTR,NUMBER_OF_GHOST_RECEIVE,RECEIVE_LIST,ERR,ERROR,*999)
-        
         ALLOCATE(DOMAIN_MAPPING%ADJACENT_DOMAINS(domain_idx)%LOCAL_GHOST_RECEIVE_INDICES(NUMBER_OF_GHOST_RECEIVE),STAT=ERR)
         IF(ERR/=0) CALL FlagError("Could not allocate local ghost receive inidices.",ERR,ERROR,*999)
-        
         DOMAIN_MAPPING%ADJACENT_DOMAINS(domain_idx)%LOCAL_GHOST_RECEIVE_INDICES(1:NUMBER_OF_GHOST_RECEIVE)= &
           & RECEIVE_LIST(1:NUMBER_OF_GHOST_RECEIVE)
-        
         DOMAIN_MAPPING%ADJACENT_DOMAINS(domain_idx)%NUMBER_OF_RECEIVE_GHOSTS=NUMBER_OF_GHOST_RECEIVE
-        DEALLOCATE(RECEIVE_LIST)
-        
+        DEALLOCATE(RECEIVE_LIST)        
       ENDDO !domain_idx
 
-      IF (DEBUGGING) THEN
-        DO domain_idx=1,DOMAIN_MAPPING%NUMBER_OF_ADJACENT_DOMAINS
-          PRINT "(I1,A,I3)", my_computational_node_number, ": call no", CALL_COUNTER
-!          PRINT "(I1,A,I3,A)", my_computational_node_number, ": domain ",domain_idx, ", local ghost send indices:"
-!          PRINT "(A)", "    local  global"
-!          
-!          DO idx=1,DOMAIN_MAPPING%ADJACENT_DOMAINS(domain_idx)%NUMBER_OF_SEND_GHOSTS
-!          
-!            local_number = DOMAIN_MAPPING%ADJACENT_DOMAINS(domain_idx)%LOCAL_GHOST_SEND_INDICES(idx)
-!          
-!            global_number = DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(local_number)
-!          
-!            PRINT "(I1,A,I4,A,I4)", my_computational_node_number, ": ", local_number,",",global_number
-!          ENDDO
-          
-          PRINT "(I1,A,I3,A)", my_computational_node_number, ": domain ",domain_idx, ", local ghost receive indices:"
-          PRINT "(A)", "   idx   local  global"
-          
-          DO idx=1,DOMAIN_MAPPING%ADJACENT_DOMAINS(domain_idx)%NUMBER_OF_RECEIVE_GHOSTS
-          
-            local_number = DOMAIN_MAPPING%ADJACENT_DOMAINS(domain_idx)%LOCAL_GHOST_RECEIVE_INDICES(idx)
-          
-            global_number = DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(local_number)
-          
-            PRINT "(I1,A,I4,A,I4,A,I4)", my_computational_node_number, ": ",idx, ",",local_number,",",global_number
-          ENDDO
-          
-        ENDDO
-      ENDIF
-      
-      IF (CALL_COUNTER == 27) THEN
-        !PRINT *, "stop in domain_mappings.f90:628"
-        !STOP
-      ENDIF
-      
       DEALLOCATE(ADJACENT_DOMAIN_MAP)
       DEALLOCATE(GHOST_SEND_LISTS)
       DEALLOCATE(GHOST_RECEIVE_LISTS)
@@ -706,12 +504,12 @@ CONTAINS
               & DOMAIN_MAPPING%ADJACENT_DOMAINS(domain_idx)%NUMBER_OF_SEND_GHOSTS,ERR,ERROR,*999)
             CALL WRITE_STRING_VECTOR(DIAGNOSTIC_OUTPUT_TYPE,1,1,DOMAIN_MAPPING%ADJACENT_DOMAINS(domain_idx)% &
               & NUMBER_OF_SEND_GHOSTS,8,8,DOMAIN_MAPPING%ADJACENT_DOMAINS(domain_idx)%LOCAL_GHOST_SEND_INDICES, &
-              & '("      Local send ghost indices        :",8(X,I10))','(39X,8(X,I10))',ERR,ERROR,*999)      
-            CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"      Number of receive ghosts = ", &
+              & '("      Local send ghost indicies       :",8(X,I10))','(39X,8(X,I10))',ERR,ERROR,*999)      
+            CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"      Number of recieve ghosts = ", &
               & DOMAIN_MAPPING%ADJACENT_DOMAINS(domain_idx)%NUMBER_OF_RECEIVE_GHOSTS,ERR,ERROR,*999)
             CALL WRITE_STRING_VECTOR(DIAGNOSTIC_OUTPUT_TYPE,1,1,DOMAIN_MAPPING%ADJACENT_DOMAINS(domain_idx)% &
               & NUMBER_OF_RECEIVE_GHOSTS,8,8,DOMAIN_MAPPING%ADJACENT_DOMAINS(domain_idx)%LOCAL_GHOST_RECEIVE_INDICES, &
-              & '("      Local receive ghost indices     :",8(X,I10))','(39X,8(X,I10))',ERR,ERROR,*999)              
+              & '("      Local receive ghost indicies    :",8(X,I10))','(39X,8(X,I10))',ERR,ERROR,*999)              
           ENDDO !domain_idx
         ENDIF
       ENDIF
