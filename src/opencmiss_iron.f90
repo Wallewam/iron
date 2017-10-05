@@ -337,6 +337,31 @@ MODULE OpenCMISS_Iron
     MODULE PROCEDURE cmfe_Fields_CreateRegion
   END INTERFACE cmfe_Fields_Create
 
+  INTERFACE CMFE_DomainTopologyNOdeCheckExists
+
+    MODULE  PROCEDURE CMFE_DOMAIN_TOPOLOGY_NODE_CHECK_EXISTS
+
+  END INTERFACE CMFE_DomainTopologyNOdeCheckExists
+
+
+  INTERFACE cmfe_MeshElementNOdesGet
+
+    MODULE  PROCEDURE cmfe_Mesh_ElementNOdesGet
+
+  END INTERFACE cmfe_MeshElementNOdesGet
+
+
+  INTERFACE cmfe_Mesh_NodeXiGet
+
+    MODULE  PROCEDURE cmfe_MeshNodeXiGet
+
+  END INTERFACE cmfe_Mesh_NodeXiGet
+
+
+
+  PUBLIC cmfe_Mesh_NodeXiGet,cmfe_MeshElementNOdesGet,CMFE_DomainTopologyNOdeCheckExists
+
+
   PUBLIC cmfe_Finalise,cmfe_Initialise
 
   PUBLIC cmfe_WorkingRealPrecisionGet
@@ -61694,6 +61719,124 @@ CONTAINS
     RETURN
 
   END SUBROUTINE cmfe_FieldMLIO_GetSession
+!================================================================================================================================
+  !FOllowing subroutine extract the local coordinates of a node, nodeIdx.
+ ! ===============================================================================================================================
+
+  SUBROUTINE cmfe_MeshNodeXiGet(Mesh,NOdeIdx,LocalCoordinates,Err)
+
+    ! Argument variables
+    TYPE(cmfe_MeshType), INTENT(IN)               :: Mesh !<A cmfe_MeshType object.
+    INTEGER(INTG), INTENT(IN)                     :: NodeIdx !<Global Id of node to find LocalCoordinates for.
+    REAL(DP),  ALLOCATABLE, INTENT(OUT)           :: LocalCoordinates(:,:) !< An array that stores all possible LocalCoordinates for NOdeIdx
+    INTEGER(INTG), INTENT(OUT)                    :: Err !<The error code.
+
+    ! Local variables
+    INTEGER (INTG)                   :: ElementLocalIdx, NOdesIdx,NumberOfNodesInElement, & 
+      & NumberOfElementsSurroundingNOde,NUMBER_OF_XI,LocalElementIdxNOdes,SurroundingNOdeIdx,TotalNodes
+
+    ENTERS("cmfe_MeshNodeXiGet",err,error,*999)
+
+    TotalNodes = SIZE(Mesh%MESH%TOPOLOGY(1)%PTR%NODES%NODES(:))
+    ! this would extract number of nodes in an element
+    NumberOfNodesInElement=SIZE(Mesh%MESH%TOPOLOGY(1)%PTR%ELEMENTS%ELEMENTS(1)%GLOBAL_ELEMENT_NODES(:))
+    ! this data structure would extract number of nodes surrouding an element
+    NUmberOfElementsSurroundingNOde = SIZE(Mesh%MESH%TOPOLOGY(1)%PTR%NODES%NODES(NOdeIdx)%surroundingElements(:))
+    ! allocating the output data strcuture
+    ALLOCATE(LocalCoordinates(NUmberOfElementsSurroundingNode,Mesh%MESH%NUMBER_OF_DIMENSIONS+1))
+
+    DO SurroundingNOdeIdx = 1, NUmberOfElementsSurroundingNOde
+      ! the following data structure extracts local element ids surrunding a node
+      ElementLocalIdx = Mesh%MESH%TOPOLOGY(1)%PTR%NODES%NODES(NOdeIdx)%surroundingElements(SurroundingNOdeIdx)
+
+      DO NOdesIdx = 1, NumberOfNodesInElement
+
+       IF(Mesh%MESH%TOPOLOGY(1)%PTR%ELEMENTS%ELEMENTS(ElementLocalIdx)%MESH_ELEMENT_NODES(NOdesIdx)==NodeIdx) EXIT
+
+      END DO
+
+      ! store local coordinate of a node wrt an all the elements its attached to
+      LocalCoordinates(SurroundingNOdeIdx,1)  = ElementLocalIdx
+      LocalCoordinates(SurroundingNOdeIdx,2:) = &
+        & (Mesh%MESH%TOPOLOGY(1)%PTR%ELEMENTS%ELEMENTS(1)%BASIS%NODE_POSITION_INDEX(NOdesIdx,:)-1.0)/ &
+          & REAL(Mesh%MESH%TOPOLOGY(1)%PTR%ELEMENTS%ELEMENTS(1)%BASIS%INTERPOLATION_ORDER,DP)
+
+    END DO
+
+    EXITS("cmfe_MeshNodeXiGet")
+    RETURN
+999 ERRORSEXITS("cmfe_MeshNodeXiGet",err,error)
+    CALL cmfe_HandleError(err,error)
+    RETURN
+
+
+  END SUBROUTINE cmfe_MeshNodeXiGet
+! ==================================================================================!
+!  The following subroutine gives nodes corresponding to ElementIdx
+! ==================================================================================!
+  SUBROUTINE cmfe_Mesh_ElementNOdesGet(Mesh, ElementIdx, ElementNOdes,Err)
+    ! Argument variables
+    TYPE(cmfe_MeshType), INTENT(IN)               :: Mesh !<A cmfe_MeshType object.
+    INTEGER(INTG), INTENT(IN)                     :: ElementIdx !<Global Id of element to find LocalCoordinates Xi for.
+    INTEGER(INTG), INTENT(OUT),ALLOCATABLE        :: ElementNOdes(:) !< An array that stores global Ids of ElementIdx
+    INTEGER(INTG), INTENT(OUT)                    :: Err !<The error code.
+
+
+    ENTERS("cmfe_Mesh_ElementNOdesGet.",err,error,*999)
+
+    ALLOCATE(ElementNOdes &
+   (SIZE(Mesh%MESH%TOPOLOGY(1)%PTR%ELEMENTS%ELEMENTS(ElementIdx)%MESH_ELEMENT_NODES(:))))
+    ! /todo maybe change domain(1) to domain(MeshCOmponentIdx)
+    ElementNOdes(:)= &
+      & Mesh%MESH%TOPOLOGY(1)%PTR%ELEMENTS%ELEMENTS(ElementIdx)%MESH_ELEMENT_NODES(:)
+
+    EXITS("cmfe_Mesh_ElementNOdesGet.")
+    RETURN
+999 ERRORSEXITS("cmfe_Mesh_ElementNOdesGet.",err,error)
+    CALL cmfe_HandleError(err,error)
+    RETURN
+
+  END SUBROUTINE cmfe_Mesh_ElementNOdesGet
+
+  ! =====================================================================
+  ! check weather node belongs to a dependent field component
+  ! =====================================================================
+
+  SUBROUTINE CMFE_DOMAIN_TOPOLOGY_NODE_CHECK_EXISTS(field, variableType , nodeUserNumber , componentNumber,UserNodeExist,err  )
+
+    TYPE(cmfe_FieldType), INTENT(IN)    :: field !<The dependent field to set the boundary condition on.
+    INTEGER(INTG), INTENT(IN)           :: nodeUserNumber !<The user number of the node to set the boundary conditions for.
+    INTEGER(INTG), INTENT(IN)           :: componentNumber !<The component number of the dependent field to set the boundary condition at.
+    INTEGER(INTG), INTENT(IN)           :: variableType !<The variable type of the dependent field to set the boundary condition at. \see OPENCMISS_FieldVariableTypes
+    INTEGER(INTG), INTENT(OUT)          :: err
+    LOGICAL      , INTENT(OUT)          :: UserNodeExist
+    ! LOCAL VARIABLES
+    LOGICAL                             :: GhostNOde
+    INTEGER(INTG)                       :: DomainLocalNodeNumber
+    TYPE(DOMAIN_TOPOLOGY_TYPE), POINTER :: DOMAIN_TOPOLOGY
+    TYPE(VARYING_STRING)                :: Error
+
+
+
+    ENTERS("CMFE_DOMAIN_TOPOLOGY_NODE_CHECK_EXISTS",err,error,*999)
+
+    DOMAIN_TOPOLOGY=>FIELD%FIELD%VARIABLE_TYPE_MAP(variableType)%PTR%COMPONENTS(componentNumber)%DOMAIN%TOPOLOGY
+
+    CALL DOMAIN_TOPOLOGY_NODE_CHECK_EXISTS(DOMAIN_TOPOLOGY,nodeUserNumber,UserNodeExist, &
+      & DomainLocalNodeNumber,GhostNOde,err,Error,*999)
+
+    EXITS("CMFE_DOMAIN_TOPOLOGY_NODE_CHECK_EXISTS")
+
+    RETURN
+
+999 err = 0
+
+    ERRORSEXITS("CMFE_DOMAIN_TOPOLOGY_NODE_CHECK_EXISTS",err,error)
+    CALL cmfe_HandleError(err,error)
+    RETURN
+
+
+  END SUBROUTINE CMFE_DOMAIN_TOPOLOGY_NODE_CHECK_EXISTS
 
 
 ! =======================================================================================================================
@@ -62073,4 +62216,5 @@ CONTAINS
 
 
 END MODULE OpenCMISS_Iron
+
 

@@ -63,7 +63,10 @@ MODULE FIELD_ROUTINES
   USE NODE_ROUTINES
   USE STRINGS
   USE TYPES
+!  USE REGION_ROUTINES
 
+
+  
 #include "macros.h"  
 
   IMPLICIT NONE
@@ -1229,6 +1232,8 @@ MODULE FIELD_ROUTINES
     & FIELD_INPUT_VEL1_SET_TYPE,FIELD_INPUT_VEL2_SET_TYPE,FIELD_INPUT_VEL3_SET_TYPE,FIELD_INPUT_LABEL_SET_TYPE, &
     & FIELD_IMPERMEABLE_FLAG_VALUES_SET_TYPE,FIELD_INTEGRATED_NEUMANN_SET_TYPE,FIELD_UPWIND_VALUES_SET_TYPE, &
     & FIELD_PREVIOUS_UPWIND_VALUES_SET_TYPE
+
+
 
   PUBLIC FIELD_NO_SCALING,FIELD_UNIT_SCALING,FIELD_ARC_LENGTH_SCALING,FIELD_HARMONIC_MEAN_SCALING,FIELD_ARITHMETIC_MEAN_SCALING, &
     & FIELD_GEOMETRIC_MEAN_SCALING
@@ -5507,6 +5512,40 @@ CONTAINS
     RETURN 1
   END SUBROUTINE FIELD_DEPENDENT_TYPE_GET
 
+
+
+
+  !
+  !================================================================================================================================
+  !
+  !> Find the field with the given user number, or throw an error if it does not exist.
+  SUBROUTINE FIELD_USER_NUMBER_TO_FIELD_INTERFACE( USER_NUMBER, INTERFACE, FIELD, ERR, ERROR, * )
+    !Arguments
+    INTEGER(INTG), INTENT(IN) :: USER_NUMBER !<The user number of the field to find
+    TYPE(INTERFACE_TYPE), POINTER :: INTERFACE !<A pointer to the interface containing the field
+    TYPE(FIELD_TYPE), POINTER :: FIELD !<On exit, a pointer to the field with the specified user number.
+    INTEGER(INTG), INTENT(OUT) :: ERR !<The error code.
+    TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
+
+    !Locals
+    TYPE(VARYING_STRING) :: LOCAL_ERROR
+
+    ENTERS("FIELD_USER_NUMBER_TO_FIELD_INTERFACE", ERR, ERROR, *999 )
+
+    NULLIFY( FIELD )
+    CALL FIELD_USER_NUMBER_FIND( USER_NUMBER, INTERFACE, FIELD, ERR, ERROR, *999 )
+      CALL FIELD_USER_NUMBER_FIND( USER_NUMBER, INTERFACE, FIELD, ERR, ERROR, *999 )
+    IF( .NOT.ASSOCIATED( FIELD ) ) THEN
+      LOCAL_ERROR = "A field with an user number of "//TRIM(NUMBER_TO_VSTRING( USER_NUMBER, "*", ERR, ERROR ))// &
+        & " does not exist on region number "//TRIM(NUMBER_TO_VSTRING( INTERFACE%USER_NUMBER, "*", ERR, ERROR ))//"."
+      CALL FlagError( LOCAL_ERROR, ERR, ERROR, *999 )
+    ENDIF
+
+    EXITS( "FIELD_USER_NUMBER_TO_FIELD_INTERFACE" )
+    RETURN
+999 ERRORSEXITS( "FIELD_USER_NUMBER_TO_FIELD_INTERFACE", ERR, ERROR )
+    RETURN 1
+  END SUBROUTINE FIELD_USER_NUMBER_TO_FIELD_INTERFACE
   !
   !================================================================================================================================
   !
@@ -31507,38 +31546,6 @@ CONTAINS
   !================================================================================================================================
   !
 
-  !> Find the field with the given user number, or throw an error if it does not exist.
-  SUBROUTINE FIELD_USER_NUMBER_TO_FIELD_INTERFACE( USER_NUMBER, INTERFACE, FIELD, ERR, ERROR, * )
-    !Arguments
-    INTEGER(INTG), INTENT(IN) :: USER_NUMBER !<The user number of the field to find
-    TYPE(INTERFACE_TYPE), POINTER :: INTERFACE !<A pointer to the interface containing the field
-    TYPE(FIELD_TYPE), POINTER :: FIELD !<On exit, a pointer to the field with the specified user number.
-    INTEGER(INTG), INTENT(OUT) :: ERR !<The error code.
-    TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
 
-    !Locals
-    TYPE(VARYING_STRING) :: LOCAL_ERROR
-
-    ENTERS("FIELD_USER_NUMBER_TO_FIELD_INTERFACE", ERR, ERROR, *999 )
-
-    NULLIFY( FIELD )
-    CALL FIELD_USER_NUMBER_FIND( USER_NUMBER, INTERFACE, FIELD, ERR, ERROR, *999 )
-      CALL FIELD_USER_NUMBER_FIND( USER_NUMBER, INTERFACE, FIELD, ERR, ERROR, *999 )
-    IF( .NOT.ASSOCIATED( FIELD ) ) THEN
-      LOCAL_ERROR = "A field with an user number of "//TRIM(NUMBER_TO_VSTRING( USER_NUMBER, "*", ERR, ERROR ))// &
-        & " does not exist on region number "//TRIM(NUMBER_TO_VSTRING( INTERFACE%USER_NUMBER, "*", ERR, ERROR ))//"."
-      CALL FlagError( LOCAL_ERROR, ERR, ERROR, *999 )
-    ENDIF
-
-    EXITS( "FIELD_USER_NUMBER_TO_FIELD_INTERFACE" )
-    RETURN
-999 ERRORSEXITS( "FIELD_USER_NUMBER_TO_FIELD_INTERFACE", ERR, ERROR )
-    RETURN 1
-
-  END SUBROUTINE FIELD_USER_NUMBER_TO_FIELD_INTERFACE
-
-  !
-  !================================================================================================================================
-  !
 
 END MODULE FIELD_ROUTINES
