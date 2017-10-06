@@ -1345,7 +1345,8 @@ CONTAINS
         ELSE IF(COUPLED_MESH%NUMBER_OF_DIMENSIONS == 3) THEN
 
           IF(ALLOCATED(NORMAL_VECTOR)) DEALLOCATE(NORMAL_VECTOR)
-          ALLOCATE(NORMAL_VECTOR(3,0.5*(NUMBER_OF_SURROUNDING_NODES-1)*(NUMBER_OF_SURROUNDING_NODES)+1), STAT=ERR) ! (n-1)n/2 + 1
+          ALLOCATE( & 
+            & NORMAL_VECTOR(3,INT(0.5*(NUMBER_OF_SURROUNDING_NODES-1)*(NUMBER_OF_SURROUNDING_NODES)+1)), STAT=ERR) ! (n-1)n/2 + 1
           IF(ERR/=0) CALL FlagError("Could not allocate NORMAL_VECTOR array.",ERR,ERROR,*999)
 
           NORMAL_VECTOR = 0
@@ -1450,12 +1451,12 @@ CONTAINS
 
           DO coordinate_idx = 1, 3
             counter= 0
-            DO node_idx = 1, SIZE(COUPLED_DECOMPOSITION%INTERFACE_MESH_COORDINATES,1)
+            DO node_idx = 1, SIZE(COUPLED_DECOMPOSITION%COUPLED_MESH_COORDINATES,1)
 
-              IF(COUPLED_DECOMPOSITION%INTERFACE_MESH_COORDINATES(node_idx, coordinate_idx)==0) counter= counter+ 1
+              IF(COUPLED_DECOMPOSITION%COUPLED_MESH_COORDINATES(node_idx, coordinate_idx)==0) counter= counter+ 1
 
             END DO !node_idx
-            IF(counter== SIZE(COUPLED_DECOMPOSITION%INTERFACE_MESH_COORDINATES,1)) EXIT
+            IF(counter== SIZE(COUPLED_DECOMPOSITION%COUPLED_MESH_COORDINATES,1)) EXIT
           END DO !coordinate_idx
 
           IF(ALLOCATED(NORMAL_VECTOR)) DEALLOCATE(NORMAL_VECTOR)
@@ -1508,7 +1509,8 @@ CONTAINS
         ELSE IF(COUPLED_MESH%NUMBER_OF_DIMENSIONS == 3) THEN
 
           IF(ALLOCATED(NORMAL_VECTOR)) DEALLOCATE(NORMAL_VECTOR)
-          ALLOCATE(NORMAL_VECTOR(3,0.5*(NUMBER_OF_SURROUNDING_NODES-1)*(NUMBER_OF_SURROUNDING_NODES)+1), STAT=ERR) ! (n-1)n/2 + 1
+          ALLOCATE(NORMAL_VECTOR(3,INT(0.5*(NUMBER_OF_SURROUNDING_NODES-1)*(NUMBER_OF_SURROUNDING_NODES)+1)), & 
+            & STAT=ERR) ! (n-1)n/2 + 1
           IF(ERR/=0) CALL FlagError("Could not allocate NORMAL_VECTOR array.",ERR,ERROR,*999)
 
           NORMAL_VECTOR = 0
@@ -2659,7 +2661,6 @@ CONTAINS
   END SUBROUTINE COUPLED_DECOMPOSITION_UPDATE_INTERFACE_DECOMPOSITION
 
 
-!=====================================================================================================================
 !====================================================================================================
  SUBROUTINE COUPLED_MESH_VERTICES_TO_IMPOSE_FIXED_PARTITIONING(COUPLED_DECOMPOSITION,ERR,ERROR,*)
 
