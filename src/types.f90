@@ -1400,6 +1400,7 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
     REAL(RP), ALLOCATABLE                              :: COUPLED_MESH_COORDINATES(:,:)
     REAL(RP), ALLOCATABLE                              :: INTERFACE_MESH_COORDINATES(:,:)
     INTEGER(INTG), ALLOCATABLE                         :: OLD_TO_NEW_VERTEX_MAPPING(:,:) !< OLD_TO_NEW_VERTEX_MAPPING(old_vertex_idx,new_vertex_idx). A 2D array that shows one-to-one mapping between vertices of original coupled graph and the coupled graph where vertices are merged.
+   TYPE(MeshNodeType), ALLOCATABLE                     :: MERGED_GRAPH_NODES(:)
   END TYPE COUPLED_DECOMPOSITION_TYPE
 
   !>Contains information on the fields defined on a region.
