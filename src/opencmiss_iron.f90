@@ -61720,9 +61720,7 @@ CONTAINS
 
   END SUBROUTINE cmfe_FieldMLIO_GetSession
 !================================================================================================================================
-  !FOllowing subroutine extract the local coordinates of a node, nodeIdx.
- ! ===============================================================================================================================
-
+  !>Following subroutine extract the local coordinates of a node, nodeIdx.
   SUBROUTINE cmfe_MeshNodeXiGet(Mesh,NOdeIdx,LocalCoordinates,Err)
 
     ! Argument variables
@@ -61732,7 +61730,7 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT)                    :: Err !<The error code.
 
     ! Local variables
-    INTEGER (INTG)                   :: ElementLocalIdx, NOdesIdx,NumberOfNodesInElement, & 
+    INTEGER (INTG)                   :: ElementLocalIdx, NOdesIdx,NumberOfNodesInElement, &
       & NumberOfElementsSurroundingNOde,NUMBER_OF_XI,LocalElementIdxNOdes,SurroundingNOdeIdx,TotalNodes
 
     ENTERS("cmfe_MeshNodeXiGet",err,error,*999)
@@ -61772,8 +61770,8 @@ CONTAINS
 
   END SUBROUTINE cmfe_MeshNodeXiGet
 ! ==================================================================================!
-!  The following subroutine gives nodes corresponding to ElementIdx
-! ==================================================================================!
+  !>  The following subroutine gives nodes corresponding to ElementIdx
+
   SUBROUTINE cmfe_Mesh_ElementNOdesGet(Mesh, ElementIdx, ElementNOdes,Err)
     ! Argument variables
     TYPE(cmfe_MeshType), INTENT(IN)               :: Mesh !<A cmfe_MeshType object.
@@ -61839,9 +61837,9 @@ CONTAINS
   END SUBROUTINE CMFE_DOMAIN_TOPOLOGY_NODE_CHECK_EXISTS
 
 
-! =======================================================================================================================
-! THe following subroutine  is used set TPWGT parameter.
-! =======================================================================================================================
+! ====================================================================================================
+!> THe following subroutine  is used set TPWGT parameter.
+
 
   SUBROUTINE cmfe_Decomposition_DecompositionTpwgtSet(decomposition,TPWGT,err)
 
@@ -61864,8 +61862,8 @@ CONTAINS
  END SUBROUTINE cmfe_Decomposition_DecompositionTpwgtSet
 
 ! =======================================================================================================================
-! THe following subroutine  is used to activate vertex based partitioning.
-! =======================================================================================================================
+ !> The following subroutine  is used to activate vertex based partitioning.
+
 
   SUBROUTINE cmfe_Decomposition_NodeBasedDecompositionSet(decomposition,NOdeBasedDecomposition,err)
 
@@ -61889,8 +61887,8 @@ CONTAINS
 
 
 ! =======================================================================================================================
-! THe following subroutine  is used to set UBVEC parameter.
-! =======================================================================================================================
+  !> THe following subroutine  is used to set UBVEC parameter.
+
 
   SUBROUTINE cmfe_Decomposition_DecompositionUBVECSet(decomposition,UBVEC,err)
 
@@ -61914,34 +61912,27 @@ CONTAINS
 
 
 ! =======================================================================================================================
-! THe following subroutine  is used to set number of vertex constraints to be balanced.
-! =======================================================================================================================
+  !> THe following subroutine  is used to set number of vertex constraints to be balanced.
+
 
   SUBROUTINE cmfe_Decomposition_NumberOfConstraintsSet(decomposition,NUmberOfCOnstraints,err)
 
     !Argument variables
     TYPE(cmfe_DecompositionType), INTENT(INOUT) :: decomposition !<The decomposition to get the type for.
-    INTEGER(INTG), INTENT(IN)                   :: NUmberOfCOnstraints
+    INTEGER(INTG), INTENT(IN)                   :: NumberOfCOnstraints
     INTEGER(INTG), INTENT(OUT)                  :: err !<The error code.
 
     !Local variables
     ENTERS("cmfe_Decomposition_NumberOfConstraintsSet",err,error,*999)
-
     CALL DECOMPOSITION_NUMBER_OF_CONSTRAINTS_SET(decomposition%decomposition, NUmberOfCOnstraints, err, error, *999)
-
     EXITS("cmfe_Decomposition_NumberOfConstraintsSet")
     RETURN
 999 ERRORSEXITS("cmfe_Decomposition_NumberOfConstraintsSet",err,error)
     CALL cmfe_HandleError(err,error)
     RETURN
-
   END SUBROUTINE cmfe_Decomposition_NumberOfConstraintsSet
-
-
-
 ! =======================================================================================================================
-! THe following subroutine  is used to impose vertex weights on the graph.
-! =======================================================================================================================
+!> The following subroutine  is used to impose vertex weights on the graph.
   SUBROUTINE cmfe_Decomposition_NodeWeightSet(Decomposition,NOdeWeightSet,err)
 
    !Argument variables
@@ -61963,7 +61954,6 @@ CONTAINS
   END SUBROUTINE cmfe_Decomposition_NodeWeightSet
 
 ! =======================================================================================================================
-
   !>Initialises a cmfe_CoupledDecompositionType object.
   SUBROUTINE cmfe_CoupledDecomposition_Initialise(CoupledDecomposition, err)
     !DLLEXPORT(cmfe_MeshEmbedding_Initialise)
@@ -61984,8 +61974,7 @@ CONTAINS
   END SUBROUTINE cmfe_CoupledDecomposition_Initialise
 
 ! =======================================================================================================================
-  !Create start cmfe_CoupledDecompositionType object.
-! =======================================================================================================================
+  !>Create start cmfe_CoupledDecompositionType object.
 
   SUBROUTINE cmfe_CoupledDecomposition_CreateStart(CoupledDecomposition, CoupledDecompositionUserNUmber, Err)
 
@@ -62010,8 +61999,8 @@ CONTAINS
 
 
  !=================================================================================================================
-  ! The following subroutine adds the geometric field information of the coupled mesh graph G_{i} in cmfe_CoupledDecomposition object.
- !=================================================================================================================
+  !> The following subroutine adds the geometric field information of the coupled mesh graph G_{i} in cmfe_CoupledDecomposition object.
+
 
   SUBROUTINE cmfe_CoupledDecomposition_AddCoupledMesh(COupledDecomposition, GeometricField, err)
 
@@ -62035,8 +62024,8 @@ CONTAINS
   END SUBROUTINE cmfe_CoupledDecomposition_AddCoupledMesh
 
  !=================================================================================================================
-  ! The following subroutine adds the geometric field information of the interface mesh graph G_{I} in cmfe_CoupledDecomposition object.
- !=================================================================================================================
+  !> The following subroutine adds the geometric field information of the interface mesh graph G_{I} in cmfe_CoupledDecomposition object.
+
 
   SUBROUTINE cmfe_CoupledDecomposition_AddInterface(COupledDecomposition, Field, err)
 
@@ -62059,7 +62048,7 @@ CONTAINS
   END SUBROUTINE cmfe_CoupledDecomposition_AddInterface
 
  !=================================================================================================================
- ! The "coupling aware" partitioning algorithm is implemented in the following subroutine.
+   !> The "coupling aware" partitioning algorithm is implemented in the following subroutine.
   SUBROUTINE cmfe_CoupledDecomposition_CreateFinish(CoupledDecomposition, err)
 
     !Argument variables
@@ -62080,7 +62069,7 @@ CONTAINS
   END SUBROUTINE  cmfe_CoupledDecomposition_CreateFinish
 
  !=================================================================================================================
- ! The following subroutine assigns the vertex-based decomposition field represented by Decomposition%Decomposition%NODE_DOMAIN(:) to the Field object.
+  !> The following subroutine assigns the vertex-based decomposition field represented by Decomposition%Decomposition%NODE_DOMAIN(:) to the Field object.
   SUBROUTINE cmfe_Decomposition_AssignDecompositionField(Field,Decomposition,VariableType, Err)
 
     !Argument variables
@@ -62103,8 +62092,8 @@ CONTAINS
 
   END SUBROUTINE  cmfe_Decomposition_AssignDecompositionField
  !================================================================================================================
- ! THis subroutine updates the decomposition object associated with the coupled mesh G_i.
- !================================================================================================================
+   !> This subroutine updates the decomposition object associated with the coupled mesh G_i.
+
   SUBROUTINE cmfe_CoupledDecomposition_Update(CoupledDecomposition,Decomposition, err)
 
     !Argument variables
@@ -62126,8 +62115,8 @@ CONTAINS
   END SUBROUTINE  cmfe_CoupledDecomposition_Update
 
  !================================================================================================================
- ! THis subroutine updates the decomposition object associated with the interface coupled mesh G_I.
- !================================================================================================================
+  !> This subroutine updates the decomposition object associated with the interface coupled mesh G_I.
+
   SUBROUTINE cmfe_CoupledDecomposition_UpdateInterface(CoupledDecomposition,Decomposition, err)
     !Argument variables
     TYPE(cmfe_CoupledDecompositionType), INTENT(IN) :: CoupledDecomposition !<cmfe_CoupledDecompositionType object to get the node domains from.
@@ -62149,8 +62138,8 @@ CONTAINS
   END SUBROUTINE  cmfe_CoupledDecomposition_UpdateInterface
 
  !================================================================================================================
- ! THis subroutine nullify the coupled mesh geometric field.
- !================================================================================================================
+   !> This subroutine nullify the coupled mesh geometric field.
+
   SUBROUTINE cmfe_CoupledDecomposition_NullifyGeometry(Field, err)
 
     !Argument variables
@@ -62170,8 +62159,8 @@ CONTAINS
   END SUBROUTINE  cmfe_CoupledDecomposition_NullifyGeometry
 
  !================================================================================================================
- ! ! THis subroutine nullify the geometric field associated with the field.
- !================================================================================================================
+   !> Tis subroutine nullify the geometric field associated with the field.
+
   SUBROUTINE cmfe_CoupledDecomposition_NullifyRegion(Region, err)
     !Argument variables
     TYPE(cmfe_RegionType), INTENT(INOUT)        :: Region !<cmfe_RegionType object to nullify.
@@ -62191,8 +62180,8 @@ CONTAINS
   END SUBROUTINE  cmfe_CoupledDecomposition_NullifyRegion
 
  !================================================================================================================
- ! THis subroutine nullify the interface geometric field.
- !================================================================================================================
+ !> This subroutine nullify the interface geometric field.
+
   SUBROUTINE cmfe_CoupledDecomposition_NullifyInterface(Interface, err)
 
     !Argument variables

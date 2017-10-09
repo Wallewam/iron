@@ -54,7 +54,6 @@ MODULE REGION_ROUTINES
   USE INPUT_OUTPUT
   USE INTERFACE_ROUTINES
   USE ISO_VARYING_STRING
-
   USE KINDS
   USE MESH_ROUTINES
   USE NODE_ROUTINES
@@ -75,7 +74,7 @@ MODULE REGION_ROUTINES
 
 
 
-#include "macros.h"  
+#include "macros.h"
 
   IMPLICIT NONE
 
@@ -88,23 +87,22 @@ MODULE REGION_ROUTINES
   !Module variables
 
   TYPE(REGIONS_TYPE) :: REGIONS
-  
-  !Interfaces
+   !Interfaces
 
   INTERFACE REGION_LABEL_GET
     MODULE PROCEDURE REGION_LABEL_GET_C
     MODULE PROCEDURE REGION_LABEL_GET_VS
   END INTERFACE !REGION_LABEL_GET
-  
+
   INTERFACE REGION_LABEL_SET
     MODULE PROCEDURE REGION_LABEL_SET_C
     MODULE PROCEDURE REGION_LABEL_SET_VS
   END INTERFACE !REGION_LABEL_SET
-  
+
   PUBLIC REGION_COORDINATE_SYSTEM_GET,REGION_COORDINATE_SYSTEM_SET
 
   PUBLIC REGION_CREATE_START,REGION_CREATE_FINISH
-  
+
   PUBLIC REGION_DATA_POINTS_GET
 
   PUBLIC REGION_DESTROY
@@ -112,21 +110,21 @@ MODULE REGION_ROUTINES
   PUBLIC REGION_INITIALISE,REGION_FINALISE
 
   PUBLIC REGION_LABEL_GET,REGION_LABEL_SET
-  
+
   PUBLIC REGION_NODES_GET
-  
+
   PUBLIC REGION_USER_NUMBER_FIND, REGION_USER_NUMBER_TO_REGION
 
   PUBLIC REGIONS_INITIALISE,REGIONS_FINALISE
 
   PUBLIC COUPLED_DECOMPOSITION_CREATE_START, COUPLED_DECOMPOSITION_ADD_COUPLED_MESH, &
-    & COUPLED_DECOMPOSITION_ADD_INTERFACE, COUPLED_DECOMPOSITION_CREATE_FINISH, & 
-    & DECOMPOSITION_ASSIGN_DECOMPOSITION_FIELD, COUPLED_DECOMPOSITION_UPDATE_DECOMPOSITION, & 
+    & COUPLED_DECOMPOSITION_ADD_INTERFACE, COUPLED_DECOMPOSITION_CREATE_FINISH, &
+    & DECOMPOSITION_ASSIGN_DECOMPOSITION_FIELD, COUPLED_DECOMPOSITION_UPDATE_DECOMPOSITION, &
     & COUPLED_DECOMPOSITION_UPDATE_INTERFACE_DECOMPOSITION
 
 CONTAINS
 
-  !  !================================================================================================================================
+  !  ================================================================================================================================
   !
 
   !>Returns the coordinate system of region. \see OPENCMISS::CMISSRegionCoordinateSystemGet
@@ -138,7 +136,7 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
-    
+
     ENTERS("REGION_COORDINATE_SYSTEM_GET",ERR,ERROR,*999)
 
     IF(ASSOCIATED(REGION)) THEN
@@ -154,13 +152,13 @@ CONTAINS
     ELSE
       CALL FlagError("Region is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("REGION_COORDINATE_SYSTEM_GET")
     RETURN
 999 ERRORSEXITS("REGION_COORDINATE_SYSTEM_GET",ERR,ERROR)
     RETURN 1
   END SUBROUTINE REGION_COORDINATE_SYSTEM_GET
-  
+
   !
   !================================================================================================================================
   !
@@ -194,13 +192,13 @@ CONTAINS
     ELSE
       CALL FlagError("Region is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("REGION_COORDINATE_SYSTEM_SET")
     RETURN
 999 ERRORSEXITS("REGION_COORDINATE_SYSTEM_SET",ERR,ERROR)
     RETURN 1
   END SUBROUTINE REGION_COORDINATE_SYSTEM_SET
-  
+
   !
   !================================================================================================================================
   !
@@ -213,7 +211,7 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
-     
+
     ENTERS("REGION_CREATE_FINISH",ERR,ERROR,*999)
 
     IF(ASSOCIATED(REGION)) THEN
@@ -225,18 +223,18 @@ CONTAINS
     ELSE
       CALL FlagError("Region is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     IF(DIAGNOSTICS1) THEN
-      CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"Region : ",REGION%USER_NUMBER,ERR,ERROR,*999)      
+      CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"Region : ",REGION%USER_NUMBER,ERR,ERROR,*999)
       CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"  Label = ",REGION%LABEL,ERR,ERROR,*999)
       IF(ASSOCIATED(REGION%PARENT_REGION)) THEN
         CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"  Parent region user number = ",REGION%PARENT_REGION%USER_NUMBER, &
           & ERR,ERROR,*999)
         CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"  Parent region label = ",REGION%PARENT_REGION%LABEL, &
-          & ERR,ERROR,*999)        
+          & ERR,ERROR,*999)
       ENDIF
     ENDIF
-    
+
     EXITS("REGION_CREATE_FINISH")
     RETURN
 999 ERRORSEXITS("REGION_CREATE_FINISH",ERR,ERROR)
@@ -246,7 +244,7 @@ CONTAINS
   !
   !================================================================================================================================
   !
-  
+
   !>Starts the creation a new region number USER_NUMBER as a sub region to the given PARENT_REGION, initialises all
   !>variables and inherits the PARENT_REGIONS coordinate system. \see OPENCMISS::CMISSRegionCreateFinish
   !>Default values set for the REGION's attributes are:
@@ -275,7 +273,7 @@ CONTAINS
 
     NULLIFY(NEW_REGION)
     NULLIFY(NEW_SUB_REGIONS)
-    
+
     ENTERS("REGION_CREATE_START",ERR,ERROR,*997)
 
     CALL REGION_USER_NUMBER_FIND(USER_NUMBER,NEW_REGION,ERR,ERROR,*997)
@@ -324,7 +322,7 @@ CONTAINS
         ENDIF
       ENDIF
     ENDIF
-    
+
     EXITS("REGION_CREATE_START")
     RETURN
 999 CALL REGION_FINALISE(REGION,DUMMY_ERR,DUMMY_ERROR,*998)
@@ -346,11 +344,11 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
- 
+
     ENTERS("REGION_DATA_POINTS_GET",ERR,ERROR,*998)
 
     IF(ASSOCIATED(REGION)) THEN
-      IF(REGION%REGION_FINISHED) THEN 
+      IF(REGION%REGION_FINISHED) THEN
         IF(ASSOCIATED(DATA_POINTS)) THEN
           CALL FlagError("Data points is already associated.",ERR,ERROR,*998)
         ELSE
@@ -363,14 +361,14 @@ CONTAINS
     ELSE
       CALL FlagError("Region is not associated.",ERR,ERROR,*998)
     ENDIF
-       
+
     EXITS("REGION_DATA_POINTS_GET")
     RETURN
 999 NULLIFY(DATA_POINTS)
 998 ERRORSEXITS("REGION_DATA_POINTS_GET",ERR,ERROR)
     RETURN 1
-    
-  END SUBROUTINE REGION_DATA_POINTS_GET  
+
+  END SUBROUTINE REGION_DATA_POINTS_GET
 
 
   !
@@ -399,13 +397,13 @@ CONTAINS
 !!DESTROY_REGION_PTR type routine because we need to change REGION%SUB_REGIONS of the PARENT region and this would violate section
 !!12.4.1.6 of the Fortran standard if the dummy REGION pointer argument was associated with the SUB_REGIONS(x)%PTR actual
 !!argument.
-      
+
       IF(REGION%NUMBER_OF_SUB_REGIONS==0) THEN
         !No more daughter sub regions so delete this instance
         IF(ASSOCIATED(REGION%PARENT_REGION)) THEN
           NULLIFY(NEW_SUB_REGIONS)
           IF(REGION%PARENT_REGION%NUMBER_OF_SUB_REGIONS>1) THEN
-            !If the parent region has more than one sub regions then remove this instance from its sub-regions list 
+            !If the parent region has more than one sub regions then remove this instance from its sub-regions list
             ALLOCATE(NEW_SUB_REGIONS(REGION%PARENT_REGION%NUMBER_OF_SUB_REGIONS-1),STAT=ERR)
             IF(ERR/=0) CALL FlagError("Could not allocate new sub-regions.",ERR,ERROR,*999)
             count=0
@@ -435,7 +433,7 @@ CONTAINS
     ELSE
       CALL FlagError("Region number does not exist.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("REGION_DESTROY_NUMBER")
     RETURN
 999 ERRORSEXITS("REGION_DESTROY_NUMBER",ERR,ERROR)
@@ -455,16 +453,16 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     INTEGER(INTG) :: USER_NUMBER
- 
+
     ENTERS("REGION_DESTROY",ERR,ERROR,*999)
-    
+
     IF(ASSOCIATED(REGION)) THEN
       USER_NUMBER=REGION%USER_NUMBER
       CALL REGION_DESTROY_NUMBER(USER_NUMBER,ERR,ERROR,*999)
     ELSE
       CALL FlagError("Region is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("REGION_DESTROY")
     RETURN
 999 ERRORSEXITS("REGION_DESTROY",ERR,ERROR)
@@ -483,9 +481,9 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
-   
+
     ENTERS("REGION_FINALISE",ERR,ERROR,*999)
-    
+
     IF(ASSOCIATED(REGION)) THEN
       REGION%LABEL=""
       CALL CELLML_ENVIRONMENTS_FINALISE(REGION%CELLML_ENVIRONMENTS,ERR,ERROR,*999)
@@ -499,7 +497,7 @@ CONTAINS
       IF(ASSOCIATED(REGION%GENERATED_MESHES)) CALL GENERATED_MESHES_FINALISE(REGION%GENERATED_MESHES,ERR,ERROR,*999)
       DEALLOCATE(REGION)
     ENDIF
-    
+
     EXITS("REGION_FINALISE")
     RETURN
 999 ERRORSEXITS("REGION_FINALISE",ERR,ERROR)
@@ -520,7 +518,7 @@ CONTAINS
     !Local Variables
     INTEGER(INTG) :: DUMMY_ERR
     TYPE(VARYING_STRING) :: DUMMY_ERROR
-   
+
     ENTERS("REGION_INITIALISE",ERR,ERROR,*998)
 
     IF(ASSOCIATED(REGION)) THEN
@@ -550,13 +548,13 @@ CONTAINS
       CALL CELLML_ENVIRONMENTS_INITIALISE(REGION,ERR,ERROR,*999)
       CALL INTERFACES_INITIALISE(REGION,ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("REGION_INITIALISE")
     RETURN
 999 CALL REGION_FINALISE(REGION,DUMMY_ERR,DUMMY_ERROR,*998)
 998 ERRORSEXITS("REGION_INITIALISE",ERR,ERROR)
     RETURN 1
-    
+
   END SUBROUTINE REGION_INITIALISE
 
   !
@@ -587,12 +585,12 @@ CONTAINS
     ELSE
       CALL FlagError("Region is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("REGION_LABEL_GET_C")
     RETURN
 999 ERRORSEXITS("REGION_LABEL_GET_C",ERR,ERROR)
     RETURN 1
-    
+
   END SUBROUTINE REGION_LABEL_GET_C
 
    !
@@ -617,12 +615,12 @@ CONTAINS
     ELSE
       CALL FlagError("Region is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("REGION_LABEL_GET_VS")
     RETURN
 999 ERRORSEXITS("REGION_LABEL_GET_VS",ERR,ERROR)
     RETURN 1
-    
+
   END SUBROUTINE REGION_LABEL_GET_VS
 
   !
@@ -633,7 +631,7 @@ CONTAINS
   SUBROUTINE REGION_LABEL_SET_C(REGION,LABEL,ERR,ERROR,*)
 
     !Argument variables
-    TYPE(REGION_TYPE), POINTER :: REGION !<A pointer to the region to set the label for 
+    TYPE(REGION_TYPE), POINTER :: REGION !<A pointer to the region to set the label for
     CHARACTER(LEN=*), INTENT(IN) :: LABEL !<The label to set
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
@@ -650,7 +648,7 @@ CONTAINS
     ELSE
       CALL FlagError("Region is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("REGION_LABEL_SET_C")
     RETURN
 999 ERRORSEXITS("REGION_LABEL_SET_C",ERR,ERROR)
@@ -665,7 +663,7 @@ CONTAINS
   SUBROUTINE REGION_LABEL_SET_VS(REGION,LABEL,ERR,ERROR,*)
 
     !Argument variables
-    TYPE(REGION_TYPE), POINTER :: REGION !<A pointer to the region to set the label for 
+    TYPE(REGION_TYPE), POINTER :: REGION !<A pointer to the region to set the label for
     TYPE(VARYING_STRING), INTENT(IN) :: LABEL !<The label to set
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
@@ -682,7 +680,7 @@ CONTAINS
     ELSE
       CALL FlagError("Region is not associated.",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("REGION_LABEL_SET_VS")
     RETURN
 999 ERRORSEXITS("REGION_LABEL_SET_VS",ERR,ERROR)
@@ -702,11 +700,11 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
- 
+
     ENTERS("REGION_NODES_GET",ERR,ERROR,*998)
 
     IF(ASSOCIATED(REGION)) THEN
-      IF(REGION%REGION_FINISHED) THEN 
+      IF(REGION%REGION_FINISHED) THEN
         IF(ASSOCIATED(NODES)) THEN
           CALL FlagError("Nodes is already associated.",ERR,ERROR,*998)
         ELSE
@@ -719,15 +717,15 @@ CONTAINS
     ELSE
       CALL FlagError("Region is not associated.",ERR,ERROR,*998)
     ENDIF
-       
+
     EXITS("REGION_NODES_GET")
     RETURN
 999 NULLIFY(NODES)
 998 ERRORSEXITS("REGION_NODES_GET",ERR,ERROR)
     RETURN 1
-    
+
   END SUBROUTINE REGION_NODES_GET
-  
+
   !
   !================================================================================================================================
   !
@@ -744,7 +742,7 @@ CONTAINS
     !Local Variables
     INTEGER(INTG) :: nr
     TYPE(REGION_TYPE), POINTER :: WORLD_REGION
-    
+
     ENTERS("REGION_USER_NUMBER_FIND",ERR,ERROR,*999)
 
     IF(ASSOCIATED(REGION)) THEN
@@ -759,14 +757,14 @@ CONTAINS
           nr=1
           DO WHILE(nr<=WORLD_REGION%NUMBER_OF_SUB_REGIONS.AND..NOT.ASSOCIATED(REGION))
             CALL REGION_USER_NUMBER_FIND_PTR(USER_NUMBER,WORLD_REGION%SUB_REGIONS(nr)%PTR,REGION,ERR,ERROR,*999)
-            IF(.NOT.ASSOCIATED(REGION)) nr=nr+1        
+            IF(.NOT.ASSOCIATED(REGION)) nr=nr+1
           END DO
         ENDIF
       ELSE
         CALL FlagError("World region is not associated.",ERR,ERROR,*999)
       ENDIF
     ENDIF
-  
+
     EXITS("REGION_USER_NUMBER_FIND")
     RETURN
 999 ERRORSEXITS("REGION_USER_NUMBER_FIND",ERR,ERROR)
@@ -807,7 +805,7 @@ CONTAINS
     ELSE
       CALL FlagError("Start region is not associated",ERR,ERROR,*999)
     ENDIF
-    
+
     EXITS("REGION_USER_NUMBER_FIND_PTR")
     RETURN
 999 ERRORSEXITS("REGION_USER_NUMBER_FIND_PTR",ERR,ERROR)
@@ -837,13 +835,13 @@ CONTAINS
       CALL REGION_FINALISE(REGIONS%WORLD_REGION,ERR,ERROR,*999)
       NULLIFY(REGIONS%WORLD_REGION)
     ENDIF
-   
+
     EXITS("REGIONS_FINALISE")
     RETURN
 999 ERRORSEXITS("REGIONS_FINALISE",ERR,ERROR)
     RETURN 1
   END SUBROUTINE REGIONS_FINALISE
-  
+
   !
   !================================================================================================================================
   !
@@ -859,14 +857,14 @@ CONTAINS
     TYPE(COORDINATE_SYSTEM_TYPE), POINTER :: WORLD_COORDINATE_SYSTEM
 
     NULLIFY(WORLD_COORDINATE_SYSTEM)
-    
+
     ENTERS("REGIONS_INITIALISE",ERR,ERROR,*999)
-    
+
     IF(ASSOCIATED(WORLD_REGION)) THEN
       CALL FlagError("World region is already associated.",ERR,ERROR,*999)
     ELSE
       CALL COORDINATE_SYSTEM_USER_NUMBER_FIND(0,WORLD_COORDINATE_SYSTEM,ERR,ERROR,*999)
-      IF(ASSOCIATED(WORLD_COORDINATE_SYSTEM)) THEN        
+      IF(ASSOCIATED(WORLD_COORDINATE_SYSTEM)) THEN
         CALL REGION_INITIALISE(REGIONS%WORLD_REGION,ERR,ERROR,*999)
         REGIONS%WORLD_REGION%USER_NUMBER=0
         REGIONS%WORLD_REGION%LABEL="World Region"
@@ -878,7 +876,7 @@ CONTAINS
         CALL FlagError("World coordinate system has not been created.",ERR,ERROR,*999)
       ENDIF
     ENDIF
-   
+
     EXITS("REGIONS_INITIALISE")
     RETURN
 999 ERRORSEXITS("REGIONS_INITIALISE",ERR,ERROR)
@@ -917,7 +915,7 @@ CONTAINS
   END SUBROUTINE REGION_USER_NUMBER_TO_REGION
 
  !=====================================================================================================
-
+ !> The following subroutine calculate the maximum edge length in the interface graph G_I
   SUBROUTINE GET_MAXIMUM_EDGE_LENGTH(COUPLED_DECOMPOSITION, MAXIMUM_EDGE_LENGTH, ERR, ERROR, *)
 
     !Argument variables
@@ -928,11 +926,9 @@ CONTAINS
 
     !Local Variables
     REAL(RP), ALLOCATABLE                     :: EDGE_LENGTHS(:)
-    INTEGER(INTG)                             :: ADJACENCY_NODE, adjacency_idx, adjncy_idx, component_idx, DOMAIN_NUMBER, &
-      & edge_length_idx, MY_COMPUTATIONAL_NODE, node_idx, numberOfComponents
-    REAL(RP)                                  :: coordinate_node_idx(3), coordinate_adjncy_idx(3), VECTOR_ALONG_THE_EDGE(3)
-    TYPE(DECOMPOSITION_TYPE), POINTER         :: DECOMPOSITION
-    TYPE(FIELD_VARIABLE_TYPE), POINTER        :: FIELD_VARIABLE
+    INTEGER(INTG)                             :: ADJACENCY_NODE, adjacency_idx, &
+      & edge_length_idx, MY_COMPUTATIONAL_NODE, node_idx
+    REAL(RP)                                  :: VECTOR_ALONG_THE_EDGE(3)
     TYPE(MESH_TYPE), POINTER                  :: INTERFACE_MESH
 
     ENTERS("GET_MAXIMUM_EDGE_LENGTH",ERR,ERROR,*999)
@@ -986,8 +982,8 @@ CONTAINS
   END SUBROUTINE GET_MAXIMUM_EDGE_LENGTH
 
  !================================================================================================================
-   ! The following subroutine builds interedges I_{iI} between coupled mesh graphs G_i and the interface graphs G_I
- !================================================================================================================
+   !> The following subroutine builds interedges I_{iI} between coupled mesh graphs G_i and the interface graphs G_I
+
   SUBROUTINE COUPLED_DECOMPOSITION_GET_INTER_EDGES(COUPLED_DECOMPOSITION, MAXIMUM_INTERFACE_EDGE_LENGTH, ERR, ERROR, *)
 
     !Argument variables
@@ -999,16 +995,13 @@ CONTAINS
     !Local Variables
     TYPE(LIST_TYPE),  POINTER :: BOUNDARY_NODE_LIST, INTER_EDGE_LIST_INTERFACE_MESH, INTER_EDGE_LIST_COUPLED_MESH
     TYPE(LIST_PTR_TYPE), ALLOCATABLE:: ADJNCY_RESTRICTED_TO_INTERFACE_LIST(:)
-    TYPE(DECOMPOSITION_TYPE), POINTER :: DECOMPOSITION_COUPLED_MESH, DECOMPOSITION_INTERFACE_MESH
     TYPE(MESH_TYPE), POINTER:: COUPLED_MESH, INTERFACE_MESH
-    TYPE(FIELD_VARIABLE_TYPE), POINTER  :: FIELD_VARIABLE_COUPLED_MESH, FIELD_VARIABLE_INTERFACE_MESH
-    INTEGER(INTG) :: boundary_node_idx,COUNTER,coupled_mesh_normal_vector_idx, interface_mesh_normal_vector_idx, &
-      & coupled_mesh_nodes_idx,coupled_mesh_node_idx,component_idx, &
-      & DOMAIN_NUMBER,distance_idx,GLOBAL_NUMBER_OF_INTER_EDGES,INTERFACE_MESH_NODE_TO_ADD,interface_node_idx, &
-      & interface_mesh_node_idx,inter_edge_idx,MY_COMPUTATIONAL_NODE,NUMBER_OF_BOUNDARY_NODES,NUMBER_OF_INTER_EDGES, &
+    INTEGER(INTG) :: boundary_node_idx,coupled_mesh_normal_vector_idx, interface_mesh_normal_vector_idx, &
+      & coupled_mesh_node_idx, distance_idx,INTERFACE_MESH_NODE_TO_ADD,interface_node_idx, &
+      & inter_edge_idx,MY_COMPUTATIONAL_NODE,NUMBER_OF_BOUNDARY_NODES,NUMBER_OF_INTER_EDGES, &
       & NUMBER_OF_NODES,surrounding_node_idx
-    REAL(RP) :: coordinate_coupled_mesh_node_idx(3), coordinate_interface_mesh_node_idx(3), DIFFERENCE_IN_ANGLE
-    REAL(RP), ALLOCATABLE :: DISTANCE(:), NORMAL_VECTOR_COUPLED_MESH(:,:), NORMAL_VECTOR_INTERFACE_MESH(:,:)				
+    REAL(RP) :: DIFFERENCE_IN_ANGLE
+    REAL(RP), ALLOCATABLE :: DISTANCE(:), NORMAL_VECTOR_COUPLED_MESH(:,:), NORMAL_VECTOR_INTERFACE_MESH(:,:)
     INTEGER(INTG), ALLOCATABLE  :: ADJNCY_RESTRICTED_TO_INTERFACE(:,:),BOUNDARY_NODES(:), &
       & COUPLED_MESH_INTER_EDGE_NODES(:),INTERFACE_MESH_INTER_EDGE_NODES(:),LIST_OF_NODES(:), &
       & NUMBER_ADJNCY_RESTRICTED_TO_INTERFACE(:)
@@ -1133,20 +1126,19 @@ CONTAINS
 
            IF(MINVAL(PACK(DISTANCE,DISTANCE >= -1E-5)) < MAXIMUM_INTERFACE_EDGE_LENGTH ) THEN
 
-             INTERFACE_MESH_NODE_TO_ADD= SQRT(REAL(DOT_PRODUCT(&
+             INTERFACE_MESH_NODE_TO_ADD= INT(SQRT(REAL(DOT_PRODUCT(&
                & MINLOC(PACK(DISTANCE,DISTANCE >= -1E-5)-MINVAL(PACK(DISTANCE,DISTANCE >= -1E-5))),&
-                 & MINLOC(PACK(DISTANCE,DISTANCE >= -1E-5)-MINVAL(PACK(DISTANCE,DISTANCE >= -1E-5))))))
+                 & MINLOC(PACK(DISTANCE,DISTANCE >= -1E-5)-MINVAL(PACK(DISTANCE,DISTANCE >= -1E-5)))))),INTG)
 
-             ! Calculate normal at vertex coupled_mesh_node_idx
+             ! Calculate normal at vertex coupled_mesh_node_idx.
              CALL COUPLED_MESH_CALCULATE_NORMAL(COUPLED_DECOMPOSITION,  &
                & boundary_node_idx, NORMAL_VECTOR_COUPLED_MESH, ERR, ERROR, *999)
 
-             ! Calculate normal at vertex interface_mesh_node_idx
+             ! Calculate normal at vertex interface_mesh_node_idx.
              CALL INTERFACE_MESH_CALCULATE_NORMAL(COUPLED_DECOMPOSITION,  &
                & INTERFACE_MESH_NODE_TO_ADD, NORMAL_VECTOR_INTERFACE_MESH, ERR, ERROR, *999)
 
-          
-             DO coupled_mesh_normal_vector_idx = 1, SIZE(NORMAL_VECTOR_COUPLED_MESH,2)
+                      DO coupled_mesh_normal_vector_idx = 1, SIZE(NORMAL_VECTOR_COUPLED_MESH,2)
                DO interface_mesh_normal_vector_idx = 1, SIZE(NORMAL_VECTOR_INTERFACE_MESH,2)
 
                 ! COS(\Theeta)  =  (U.V)/( |U|.|V|)
@@ -1232,8 +1224,8 @@ CONTAINS
   END SUBROUTINE COUPLED_DECOMPOSITION_GET_INTER_EDGES
 
 !==================================================================================================================
-! Calculate all possible normal angles on node NODE_ID of the coupled mesh graph G_i
-!==================================================================================================================
+!> Calculate all possible normal angles on node NODE_ID of the coupled mesh graph G_i
+
   SUBROUTINE COUPLED_MESH_CALCULATE_NORMAL(COUPLED_DECOMPOSITION, NODE_ID, NORMAL_VECTOR, ERR, ERROR, *)
 
     !Argument variables
@@ -1243,11 +1235,38 @@ CONTAINS
     INTEGER(INTG)                                            :: NODE_ID !<The global node id to find normal at.
     REAL(RP), ALLOCATABLE                                    :: NORMAL_VECTOR(:,:) !< 2D array containing all possible normal vectors at NODE_ID.
     !Local variables
-    INTEGER(INTG)  :: coordinate_idx, counter, idx, MY_COMPUTATIONAL_NODE, node_idx, normal_vector_idx, &
-      & normal_vector_idx_1,normal_vector_idx_2, NUMBER_OF_SURROUNDING_NODES, surrouding_node_idx, &
+    INTEGER(INTG)  :: coordinate_idx, counter, MY_COMPUTATIONAL_NODE, node_idx, normal_vector_idx, &
+      & normal_vector_idx_1,normal_vector_idx_2, NUMBER_OF_SURROUNDING_NODES, &
       & surrouding_node, surrounding_node_idx, vector_idx
     REAL(RP), ALLOCATABLE                                    :: TANGENT_VECTOR(:,:)
     TYPE(MESH_TYPE), POINTER                                 :: COUPLED_MESH
+                                                                ! In the given mesh, for vertex_1, the tangent and normal vectors are calculated as follow:
+
+                                                                !                              ^
+                                                                !                              |NORMAL_VECTOR(1,:)
+                                                                !                              |
+                                                                !                              |
+                                                                !                              |        
+                                                                !           vertex_1  o---------------->o vertex_2
+                                                                !                     | TANGENT_VECTOR(1,:)
+                                                                !                     |   
+                                                                !                     |
+                                                                !                     |
+                                                                !                     |
+                                                                !NORMAL_VECTOR(2,:)   |TANGENT_VECTOR(2,:)
+                                                                !       <-------------|
+                                                                !                     |
+                                                                !                     V
+                                                                !                     o
+                                                                !                     vertex_3
+
+                                                                ! Description of the labels:
+                                                                ! TANGENT_VECTOR(1,:) is a vector drawn between vertex 1 and vertex 2.
+                                                                ! TANGENT_VECTOR(2,:) is a vector drawn between vertex 2 and vertex 3.
+                                                                ! TANGENT_VECTOR(3,:) is a vector which is normalized average of  TANGENT_VECTOR(1,:) and TANGENT_VECTOR(2,:).
+                                                                ! NORMAL_VECTOR(1,:) is perpendicular to TANGENT_VECTOR(1,:).
+                                                                ! NORMAL_VECTOR(2,:) is perpendicular to TANGENT_VECTOR(2,:).
+                                                                ! NORMAL_VECTOR(3,:) is perpendicular to TANGENT_VECTOR(3,:).
 
 
     ENTERS(" COUPLED_MESH_CALCULATE_NORMAL",ERR,ERROR,*999)
@@ -1287,9 +1306,12 @@ CONTAINS
 
           DO coordinate_idx = 1, 3
             counter= 0
+            ! The following do-loop figures out which one of the coordinates in the coupled mesh is all zero.
+            ! In other words, it will help algorithm to judge which plane the 2D mesh lie on.             
             DO node_idx = 1, SIZE(COUPLED_DECOMPOSITION%COUPLED_MESH_COORDINATES,1)
 
-              IF(COUPLED_DECOMPOSITION%COUPLED_MESH_COORDINATES(node_idx, coordinate_idx)==0) counter= counter+ 1
+              IF(ABS(COUPLED_DECOMPOSITION%COUPLED_MESH_COORDINATES(node_idx, coordinate_idx))<=1E-12) &
+                & counter= counter+ 1
 
             END DO !node_idx
             IF(counter== SIZE(COUPLED_DECOMPOSITION%COUPLED_MESH_COORDINATES,1)) EXIT
@@ -1345,7 +1367,7 @@ CONTAINS
         ELSE IF(COUPLED_MESH%NUMBER_OF_DIMENSIONS == 3) THEN
 
           IF(ALLOCATED(NORMAL_VECTOR)) DEALLOCATE(NORMAL_VECTOR)
-          ALLOCATE( & 
+          ALLOCATE( &
             & NORMAL_VECTOR(3,INT(0.5*(NUMBER_OF_SURROUNDING_NODES-1)*(NUMBER_OF_SURROUNDING_NODES)+1)), STAT=ERR) ! (n-1)n/2 + 1
           IF(ERR/=0) CALL FlagError("Could not allocate NORMAL_VECTOR array.",ERR,ERROR,*999)
 
@@ -1403,8 +1425,8 @@ CONTAINS
   END SUBROUTINE  COUPLED_MESH_CALCULATE_NORMAL
 
 !=================================================================================================================
-! Calculate all possible normal angles on node NODE_ID of the interface mesh graph G_I
-!==================================================================================================================
+!> Calculate all possible normal angles on node NODE_ID of the interface mesh graph G_I
+
   SUBROUTINE INTERFACE_MESH_CALCULATE_NORMAL(COUPLED_DECOMPOSITION, NODE_ID, NORMAL_VECTOR, ERR, ERROR, *)
 
     !Argument variables
@@ -1413,12 +1435,42 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT)                        :: ERROR !<The error string.
     INTEGER(INTG)                                            :: NODE_ID !<The global node id to find normal at.
     REAL(RP), ALLOCATABLE                                    :: NORMAL_VECTOR(:,:) !< 2D array containing all possible normal vectors at NODE_ID.
+
+                                                                ! In the given mesh, for vertex_1, the tangent and normal vectors are calculated as follow:
+
+                                                                !                              ^
+                                                                !                              |NORMAL_VECTOR(1,:)
+                                                                !                              |
+                                                                !                              |
+                                                                !                              |        
+                                                                !           vertex_1  o---------------->o vertex_2
+                                                                !                     | TANGENT_VECTOR(1,:)
+                                                                !                     |   
+                                                                !                     |
+                                                                !                     |
+                                                                !                     |
+                                                                !NORMAL_VECTOR(2,:)   |TANGENT_VECTOR(2,:)
+                                                                !       <-------------|
+                                                                !                     |
+                                                                !                     V
+                                                                !                     o
+                                                                !                     vertex_3
+
+                                                                ! Description of the labels:
+                                                                ! TANGENT_VECTOR(1,:) is a vector drawn between vertex 1 and vertex 2
+                                                                ! TANGENT_VECTOR(2,:) is a vector drawn between vertex 2 and vertex 3
+                                                                ! TANGENT_VECTOR(3,:) is a vector which is normalized average of  TANGENT_VECTOR(1,:) and TANGENT_VECTOR(2,:)
+                                                                ! NORMAL_VECTOR(1,:) is perpendicular to TANGENT_VECTOR(1,:)
+                                                                ! NORMAL_VECTOR(2,:) is perpendicular to TANGENT_VECTOR(2,:)
+                                                                ! NORMAL_VECTOR(3,:) is perpendicular to TANGENT_VECTOR(3,:)
+                                                                                                                                    
     !Local variables
-    INTEGER(INTG)  :: coordinate_idx, counter, idx, MY_COMPUTATIONAL_NODE, node_idx, normal_vector_idx, &
-      & normal_vector_idx_1,normal_vector_idx_2, NUMBER_OF_SURROUNDING_NODES, surrouding_node_idx, &
+    INTEGER(INTG)  :: coordinate_idx, counter, MY_COMPUTATIONAL_NODE, node_idx, normal_vector_idx, &
+      & normal_vector_idx_1,normal_vector_idx_2, NUMBER_OF_SURROUNDING_NODES, &
       & surrouding_node, surrounding_node_idx, vector_idx
-    REAL(RP), ALLOCATABLE                                    :: TANGENT_VECTOR(:,:)
-    TYPE(MESH_TYPE), POINTER                                 :: INTERFACE_MESH, COUPLED_MESH
+    REAL(RP), ALLOCATABLE                                    :: TANGENT_VECTOR(:,:)!                          TANGENT_VECTOR(1,:)         TANGENT_VECTOR(2,:)
+                                                                                   ! For instance 1D mesh: o-<--------------------o------------------------->-o
+    TYPE(MESH_TYPE), POINTER                                 :: INTERFACE_MESH, COUPLED_MESH              !2                      1                           3 
 
 
     ENTERS(" INTERFACE_MESH_CALCULATE_NORMAL",ERR,ERROR,*999)
@@ -1448,12 +1500,14 @@ CONTAINS
 
         IF(COUPLED_MESH%NUMBER_OF_DIMENSIONS == 2) THEN
 
-
+            ! The following do-loop figures out which one of the coordinates in the coupled mesh is all zero.
+            ! In other words, it will help algorithm to judge which plane the 2D mesh lie on.
           DO coordinate_idx = 1, 3
             counter= 0
             DO node_idx = 1, SIZE(COUPLED_DECOMPOSITION%COUPLED_MESH_COORDINATES,1)
 
-              IF(COUPLED_DECOMPOSITION%COUPLED_MESH_COORDINATES(node_idx, coordinate_idx)==0) counter= counter+ 1
+              IF(ABS(COUPLED_DECOMPOSITION%COUPLED_MESH_COORDINATES(node_idx, coordinate_idx))<=1E-12) &
+                & counter= counter+ 1
 
             END DO !node_idx
             IF(counter== SIZE(COUPLED_DECOMPOSITION%COUPLED_MESH_COORDINATES,1)) EXIT
@@ -1509,7 +1563,7 @@ CONTAINS
         ELSE IF(COUPLED_MESH%NUMBER_OF_DIMENSIONS == 3) THEN
 
           IF(ALLOCATED(NORMAL_VECTOR)) DEALLOCATE(NORMAL_VECTOR)
-          ALLOCATE(NORMAL_VECTOR(3,INT(0.5*(NUMBER_OF_SURROUNDING_NODES-1)*(NUMBER_OF_SURROUNDING_NODES)+1)), & 
+          ALLOCATE(NORMAL_VECTOR(3,INT(0.5*(NUMBER_OF_SURROUNDING_NODES-1)*(NUMBER_OF_SURROUNDING_NODES)+1)), &
             & STAT=ERR) ! (n-1)n/2 + 1
           IF(ERR/=0) CALL FlagError("Could not allocate NORMAL_VECTOR array.",ERR,ERROR,*999)
 
@@ -1565,9 +1619,9 @@ CONTAINS
   END SUBROUTINE  INTERFACE_MESH_CALCULATE_NORMAL
 
 !=================================================================================================================
-! this subroutine implements the coupling-aware partitioning of multidomain problems arising from
-! interface-coupled problems using vertex-based partitioning as described in Waleed Mirza's M.Sc. thesis (referred to as Scheme B)
-!=================================================================================================================
+!> This subroutine implements the coupling-aware partitioning of multidomain problems arising from
+!> interface-coupled problems using vertex-based partitioning as described in Waleed Mirza's M.Sc. thesis (referred to as Scheme B)
+
   SUBROUTINE COUPLED_DECOMPOSITION_FIXED_VERTEX_PARTITIONING(COUPLED_DECOMPOSITION, ERR, ERROR, *)
 
   !Argument variables
@@ -1580,17 +1634,16 @@ CONTAINS
     TYPE(MESH_TYPE), POINTER                   :: COUPLED_MESH, INTERFACE_MESH, NEW_COUPLED_MESH
     TYPE(FIELD_TYPE), POINTER                  :: FIELD_COUPLED_MESH, FIELD_INTERFACE_MESH
     REAL(RP), ALLOCATABLE                      :: NODE_WEIGHTS_TO_BE_PROJECTED(:)
-    TYPE(DECOMPOSITION_TYPE), POINTER          :: COUPLED_MESH_DECOMPOSITION, INTERFACE_MESH_DECOMPOSITION, &
-      & NEW_COUPLED_MESH_DECOMPOSITION
-    INTEGER(INTG)                              :: COORDINATE_SYSTEM_USER_NUMBER, element_idx, MESH_ELEMENTS, mesh_idx,  &
-      & MESH_NODES, MESH_USER_NUMBER, NUM, NUMBER_OF_COMPUTATIONAL_NODES, PARMETIS_OPTIONS(3), proc_idx_send,  &
-      & MY_COMPUTATIONAL_NODE, node_idx, STATUS(MPI_STATUS_SIZE), REGION_SYSTEM_USER_NUMBER, & 
-      & vtx_dist_idx, proc_idx_receive, proc_idx, PROC_ID
+    TYPE(DECOMPOSITION_TYPE), POINTER          :: COUPLED_MESH_DECOMPOSITION, INTERFACE_MESH_DECOMPOSITION
+    INTEGER(INTG)                              :: COORDINATE_SYSTEM_USER_NUMBER, element_idx, MESH_ELEMENTS, &
+      & NUM, NUMBER_OF_COMPUTATIONAL_NODES, PARMETIS_OPTIONS(3), proc_idx_send,  &
+      & MY_COMPUTATIONAL_NODE, node_idx, STATUS(MPI_STATUS_SIZE), REGION_SYSTEM_USER_NUMBER, &
+      & vtx_dist_idx, proc_idx_receive, proc_idx
     INTEGER(INTG), ALLOCATABLE                 :: FLIP_PARTITION(:,:), NEW_TO_OLD_INDEX_MAPPING(:,:), &
       & NODES_TO_IMPOSE_WEIGHTS_ON(:), TEMP_ARRAY(:)
     INTEGER(INTG)                              :: xadj_counter, adjncy_size, counter, new_node_idx
-    TYPE(REGION_TYPE), POINTER                 :: COUPLED_MESH_REGION, PARENT_REGION
-    TYPE(COORDINATE_SYSTEM_TYPE), POINTER      :: COUPLED_MESH_COORDINATE_SYSTEM, NEW_COORDINATE_SYSTEM
+    TYPE(REGION_TYPE), POINTER                 :: COUPLED_MESH_REGION
+    TYPE(COORDINATE_SYSTEM_TYPE), POINTER      :: COUPLED_MESH_COORDINATE_SYSTEM
     TYPE(NODES_TYPE), POINTER                  :: COUPLED_MESH_NODE
     TYPE(meshElementsType), POINTER            :: COUPLED_MESH_ELEMENTS
     LOGICAL                                    :: FLAG
@@ -1648,7 +1701,7 @@ CONTAINS
                   FLAG = .TRUE.
                   DO WHILE (FLAG)
                     COORDINATE_SYSTEM_USER_NUMBER = IRAND()
-                    CALL COORDINATE_SYSTEM_USER_NUMBER_FIND(COORDINATE_SYSTEM_USER_NUMBER, & 
+                    CALL COORDINATE_SYSTEM_USER_NUMBER_FIND(COORDINATE_SYSTEM_USER_NUMBER, &
                       & COUPLED_MESH_COORDINATE_SYSTEM,ERR,ERROR,*999)
                     IF(ASSOCIATED(COUPLED_MESH_COORDINATE_SYSTEM)) THEN
                       FLAG = .TRUE.
@@ -1656,7 +1709,7 @@ CONTAINS
                     ELSE
                       FLAG = .FALSE.
                     END IF
-                  END DO 
+                  END DO
                  ! Initialite the coordinate system.
                   CALL COORDINATE_SYSTEM_CREATE_START(&
                     & COORDINATE_SYSTEM_USER_NUMBER,COUPLED_MESH_COORDINATE_SYSTEM,ERR,ERROR,*999)
@@ -1664,11 +1717,11 @@ CONTAINS
                     & COUPLED_MESH_COORDINATE_SYSTEM,COUPLED_MESH%NUMBER_OF_DIMENSIONS,ERR,ERROR,*999)
                   CALL COORDINATE_SYSTEM_CREATE_FINISH(COUPLED_MESH_COORDINATE_SYSTEM,ERR,ERROR,*999)
 
-                 
+
                  ! The following extracts the region user number that has been been used before in create a region.
-                 
+
                   FLAG = .TRUE.
-                  DO WHILE (FLAG)   
+                  DO WHILE (FLAG)
                     REGION_SYSTEM_USER_NUMBER = IRAND()
                     NULLIFY(COUPLED_MESH_REGION)
                     CALL REGION_USER_NUMBER_FIND(REGION_SYSTEM_USER_NUMBER,COUPLED_MESH_REGION,ERR,ERROR,*999)
@@ -1677,7 +1730,7 @@ CONTAINS
                     ELSE
                       FLAG = .FALSE.
                     END IF
-                  END DO 
+                  END DO
                   ! Initialize the mesh region.
                   CALL REGION_INITIALISE(COUPLED_MESH_REGION,ERR,ERROR,*999)
                   NULLIFY(COUPLED_MESH_REGION)
@@ -1688,12 +1741,12 @@ CONTAINS
                   ! Initialize the mesh coupled mesh object from here onward.
                   CALL MESH_NUMBER_OF_ELEMENTS_GET(COUPLED_MESH,MESH_ELEMENTS,ERR,ERROR,*999)
                   NULLIFY(COUPLED_MESH_NODE)
-                  CALL NODES_CREATE_START(COUPLED_MESH_REGION,MAXVAL(COUPLED_DECOMPOSITION%OLD_TO_NEW_VERTEX_MAPPING(:,1)), & 
+                  CALL NODES_CREATE_START(COUPLED_MESH_REGION,MAXVAL(COUPLED_DECOMPOSITION%OLD_TO_NEW_VERTEX_MAPPING(:,1)), &
                     & COUPLED_MESH_NODE,ERR,ERROR,*999)
                   CALL NODES_CREATE_FINISH(COUPLED_MESH_NODE,ERR,ERROR,*999)
                   NULLIFY(NEW_COUPLED_MESH)
                   CALL MESH_INITIALISE(NEW_COUPLED_MESH,ERR,ERROR,*999)
-                  NULLIFY(NEW_COUPLED_MESH)                      
+                  NULLIFY(NEW_COUPLED_MESH)
                   CALL MESH_CREATE_START(COUPLED_DECOMPOSITION%mesh_idx,COUPLED_MESH_REGION, &
                     & COUPLED_MESH%NUMBER_OF_DIMENSIONS,NEW_COUPLED_MESH,ERR,ERROR,*999)
                   CALL MESH_NUMBER_OF_ELEMENTS_SET(NEW_COUPLED_MESH,MESH_ELEMENTS,ERR,ERROR,*999)
@@ -1914,10 +1967,10 @@ CONTAINS
 
                   DO node_idx = 1, SIZE(COUPLED_MESH_DECOMPOSITION%NODE_DOMAIN,1)
 
-                    NUM = SQRT(REAL(DOT_PRODUCT(FLIP_PARTITION &
+                    NUM = INT(SQRT(REAL(DOT_PRODUCT(FLIP_PARTITION &
                       & (MINLOC(ABS(FLIP_PARTITION(:,2)-COUPLED_MESH_DECOMPOSITION%NODE_DOMAIN(node_idx-1))),1), &
-
-                    FLIP_PARTITION(MINLOC(ABS(FLIP_PARTITION(:,2)-COUPLED_MESH_DECOMPOSITION%NODE_DOMAIN(node_idx-1))),1))))
+                      & FLIP_PARTITION(MINLOC(ABS(FLIP_PARTITION(:,2)-COUPLED_MESH_DECOMPOSITION%NODE_DOMAIN(node_idx-1))) &
+                      & ,1)))),INTG)
 
                     COUPLED_MESH_DECOMPOSITION%NODE_DOMAIN(node_idx-1) = NUM
 
@@ -1987,9 +2040,7 @@ CONTAINS
 
 
 !========================================================================================
- ! The following subroutine trivially decomposes the interface graph G_I.
-!========================================================================================
-
+ !> The following subroutine trivially decomposes the interface graph G_I.
 
   SUBROUTINE DECOMPOSITION_INTERFACE_MESH_TRIVIAL_DECOMPOSITION_SET(INTERFACE_MESH, ERR, ERROR, *)
 
@@ -2018,7 +2069,7 @@ CONTAINS
         ! Initialize and create a decomposition object.
         CALL DECOMPOSITIONS_INITIALISE(INTERFACE_MESH,ERR,ERROR,*999)
 
-        CALL DECOMPOSITION_CREATE_START(INT(CMISS_RANDOM_SEEDS(1),INTG),INTERFACE_MESH,INTERFACE_DECOMPOSITION,ERR,ERROR,*999)
+        CALL DECOMPOSITION_CREATE_START(INTERFACE_DECOMPOSITION%USER_NUMBER,INTERFACE_MESH,INTERFACE_DECOMPOSITION,ERR,ERROR,*999)
 
         CALL DECOMPOSITION_NODE_BASED_DECOMPOSITION_SET(INTERFACE_DECOMPOSITION, .TRUE. , ERR, error, *999)
 
@@ -2044,8 +2095,8 @@ CONTAINS
 
   END SUBROUTINE DECOMPOSITION_INTERFACE_MESH_TRIVIAL_DECOMPOSITION_SET
 !===================================================================================================================!
-! The following subroutine adds the geometric field information of the interface graph G_{i}  in COUPLED_DECOMPOSITION object.
-!===================================================================================================================!
+ !> The following subroutine adds the geometric field information of the interface graph G_{i}  in COUPLED_DECOMPOSITION object.
+
    SUBROUTINE COUPLED_DECOMPOSITION_ADD_INTERFACE(COUPLED_DECOMPOSITION,FIELD,ERR,ERROR,*)
 
   !Argument variables
@@ -2078,8 +2129,7 @@ CONTAINS
   END SUBROUTINE COUPLED_DECOMPOSITION_ADD_INTERFACE
 
 !===================================================================================================================!
-! The following subroutine adds the geometric field information of the coupled mesh graph G_{i} in COUPLED_DECOMPOSITION object.
-!===================================================================================================================!
+ !> The following subroutine adds the geometric field information of the coupled mesh graph G_{i} in COUPLED_DECOMPOSITION object.
 
    SUBROUTINE COUPLED_DECOMPOSITION_ADD_COUPLED_MESH(COUPLED_DECOMPOSITION,FIELD, ERR, ERROR,*)
 
@@ -2115,8 +2165,8 @@ CONTAINS
    RETURN 1
   END SUBROUTINE COUPLED_DECOMPOSITION_ADD_COUPLED_MESH
 !===================================================================================================================!
-! The following subroutine initialize members of COUPLED_DECOMPOSITION object.
-!===================================================================================================================!
+!> The following subroutine initialize members of COUPLED_DECOMPOSITION object.
+
 
   SUBROUTINE COUPLED_DECOMPOSITION_CREATE_START(COUPLED_DECOMPOSITION, &
     & COUPLED_DECOMSPOSITION_USER_NUMBER, ERR, Error, *)
@@ -2159,8 +2209,8 @@ CONTAINS
 
   END SUBROUTINE COUPLED_DECOMPOSITION_CREATE_START
 !====================================================================================!
- ! IN the following subroutine the "coupling aware" mesh partitioning is implemented.
-!====================================================================================!
+ !> In the following subroutine the "coupling aware" mesh partitioning is implemented.
+
 
   SUBROUTINE COUPLED_DECOMPOSITION_CREATE_FINISH(COUPLED_DECOMPOSITION, ERR, Error, *)
 
@@ -2266,6 +2316,8 @@ CONTAINS
   END SUBROUTINE COUPLED_DECOMPOSITION_CREATE_FINISH
 
 !=========================================================================================================================
+ !> The following subroutine gathers the geometric field information form all processors in one data structure MESH_COORDINATES(node_idx,:),
+ !> i.e. x = MESH_COORDINATES(node_idx,1),  y = MESH_COORDINATES(node_idx,2), z = MESH_COORDINATES(node_idx,3).
 
   SUBROUTINE GATHER_MESH_COORDINATES(GEOMETRIC_FIELD, MESH_COORDINATES,  ERR, Error, * )
 
@@ -2276,7 +2328,7 @@ CONTAINS
    TYPE(VARYING_STRING), INTENT(OUT)                    :: ERROR !<The error string
 
    !Local variables
-   INTEGER(INTG)                                        :: component_idx, DOMAIN_NUMBER, node_idx, NUMBER_OF_FIELD_COMPONENTS, & 
+   INTEGER(INTG)                                        :: component_idx, DOMAIN_NUMBER, node_idx, NUMBER_OF_FIELD_COMPONENTS, &
      & MY_COMPUTATIONAL_NODE
    TYPE(MESH_TYPE) , POINTER                            :: MESH
    TYPE(DECOMPOSITION_TYPE) , POINTER                   :: DECOMPOSITION
@@ -2298,7 +2350,6 @@ CONTAINS
            ALLOCATE(MESH_COORDINATES(MESH%TOPOLOGY(1)%PTR%NODES%NUmberOfNOdes,3), STAT=ERR)
            IF(ERR /= 0)   CALL FlagError(" Cannot allocate MESH_COORDINATES.",ERR,ERROR,*999)
            MESH_COORDINATES=0
-           
            DO node_idx = 1, MESH%TOPOLOGY(1)%PTR%NODES%NUmberOfNOdes
 
              CALL DECOMPOSITION_NODE_DOMAIN_GET(DECOMPOSITION,node_idx,1_INTG, &
@@ -2346,163 +2397,9 @@ CONTAINS
 
   END SUBROUTINE GATHER_MESH_COORDINATES
 
-
-! ====================================================================================================================
-! THe following subroutine flips the processor ids (or sub-domain ids) based on the subdomain ids of the interface.
-! THis routine makes sure that processor ids on both side of the inter edges are identical.
-
-  SUBROUTINE COUPLED_DECOMPOSITION_FLIP_PARTITION(COUPLED_DECOMPOSITION,ERR,Error,*)
-    !Argument variables.
-    TYPE(COUPLED_DECOMPOSITION_TYPE), POINTER, INTENT(INOUT) :: COUPLED_DECOMPOSITION !<Object that stores information about coupled decomposition.
-    INTEGER(INTG), INTENT(OUT)                               :: ERR !<The error code.
-    TYPE(VARYING_STRING), INTENT(OUT)                        :: ERROR !<The error string.
-
-    ! Local variables.
-
-    TYPE(DECOMPOSITION_TYPE), POINTER         :: COUPLED_MESH_DECOMPOSITION, INTERFACE_MESH_DECOMPOSITION
-
-    TYPE(LIST_PTR_TYPE), ALLOCATABLE          :: FLIP_PARTITION_COUPLED_MESH_LIST(:), &
-      & FLIP_PARTITION_INTERFACE_MESH_LIST(:)
-
-    INTEGER(INTG)               :: domain_idx, domain_idx_2, DOMAIN_ID, idx, inter_edge_idx,NUMBER_OF_PROCESSORS, &
-                                   & node_domain_idx, proc_idx, LOC
-
-    INTEGER(INTG),ALLOCATABLE   :: FLIP_PARTITION_COUPLED_MESH_PROCESSOR(:), FLIP_PARTITION(:,:) , &
-      & NUMBER_OF_PROCESSOR_IDS_IN_LIST(:)
-
-    ENTERS("COUPLED_DECOMPOSITION_FLIP_PARTITION",ERR,ERROR,*999)
-
-    IF(ASSOCIATED(COUPLED_DECOMPOSITION)) THEN
-
-      COUPLED_MESH_DECOMPOSITION=> &
-        & COUPLED_DECOMPOSITION%COUPLED_FIELDS(COUPLED_DECOMPOSITION%mesh_idx)%PTR%DECOMPOSITION
-
-      IF(ASSOCIATED(COUPLED_MESH_DECOMPOSITION)) THEN
-
-        INTERFACE_MESH_DECOMPOSITION=> &
-        & COUPLED_DECOMPOSITION%COUPLED_FIELDS(3)%PTR%DECOMPOSITION
-
-        IF(ASSOCIATED(INTERFACE_MESH_DECOMPOSITION)) THEN
-
-          ALLOCATE(FLIP_PARTITION(COUPLED_MESH_DECOMPOSITION%NUMBER_OF_DOMAINS,2), STAT=ERR)
-          IF(ERR/=0) CALL FlagError("FLIP_PARTITION is already allocated.", &
-           & ERR,ERROR,*999)
-
-          ALLOCATE(FLIP_PARTITION_INTERFACE_MESH_LIST(COUPLED_MESH_DECOMPOSITION%NUMBER_OF_DOMAINS), STAT=ERR)
-          IF(ERR/=0) CALL FlagError("Could not allocate FLIP_PARTITION_INTERFACE_MESH_LIST array.",ERR,ERROR,*999)
-
-          ALLOCATE(FLIP_PARTITION_COUPLED_MESH_LIST(COUPLED_MESH_DECOMPOSITION%NUMBER_OF_DOMAINS), STAT=ERR)
-          IF(ERR/=0) CALL FlagError("Could not allocate FLIP_PARTITION_COUPLED_MESH_LIST array.",ERR,ERROR,*999)
-
-          ALLOCATE(NUMBER_OF_PROCESSOR_IDS_IN_LIST(COUPLED_MESH_DECOMPOSITION%NUMBER_OF_DOMAINS), STAT=ERR)
-          IF(ERR/=0) CALL FlagError("Could not allocate NUMBER_OF_PROCESSOR_IDS_IN_LIST array.",ERR,ERROR,*999)
-
-          DO domain_idx = 1, COUPLED_MESH_DECOMPOSITION%NUMBER_OF_DOMAINS
-
-            NULLIFY(FLIP_PARTITION_INTERFACE_MESH_LIST(domain_idx)%PTR)
-
-            CALL LIST_CREATE_START(FLIP_PARTITION_INTERFACE_MESH_LIST(domain_idx)%PTR, &
-              & ERR, ERROR, *999)
-
-            CALL LIST_DATA_TYPE_SET(FLIP_PARTITION_INTERFACE_MESH_LIST(domain_idx)%PTR, &
-              & LIST_INTG_TYPE, ERR, ERROR, *999)
-
-            CALL LIST_INITIAL_SIZE_SET(FLIP_PARTITION_INTERFACE_MESH_LIST(domain_idx)%PTR, &
-              & SIZE(COUPLED_DECOMPOSITION%INTER_EDGES,1), ERR, ERROR, *999)
-
-            CALL LIST_CREATE_FINISH(FLIP_PARTITION_INTERFACE_MESH_LIST(domain_idx)%PTR, &
-              & ERR, ERROR, *999)
-
-
-            NULLIFY(FLIP_PARTITION_COUPLED_MESH_LIST(domain_idx)%PTR)
-
-            CALL LIST_CREATE_START(FLIP_PARTITION_COUPLED_MESH_LIST(domain_idx)%PTR, &
-              & ERR, ERROR, *999)
-
-            CALL LIST_DATA_TYPE_SET(FLIP_PARTITION_COUPLED_MESH_LIST(domain_idx)%PTR, &
-              & LIST_INTG_TYPE, ERR, ERROR, *999)
-
-            CALL LIST_INITIAL_SIZE_SET(FLIP_PARTITION_COUPLED_MESH_LIST(domain_idx)%PTR, &
-              & SIZE(COUPLED_DECOMPOSITION%INTER_EDGES,1), ERR, ERROR, *999)
-
-            CALL LIST_CREATE_FINISH(FLIP_PARTITION_COUPLED_MESH_LIST(domain_idx)%PTR, &
-              & ERR, ERROR, *999)
-
-          END DO ! domain_idx
-
-
-          DO proc_idx = 1, COUPLED_MESH_DECOMPOSITION%NUMBER_OF_DOMAINS
-
-            DO inter_edge_idx = 1, SIZE(COUPLED_DECOMPOSITION%INTER_EDGES,1)
-
-              DOMAIN_ID = INTERFACE_MESH_DECOMPOSITION%NODE_DOMAIN&
-                & (COUPLED_DECOMPOSITION%INTER_EDGES(inter_edge_idx,1)-1)
-
-              IF(DOMAIN_ID==proc_idx-1) THEN
-
-                CALL LIST_ITEM_ADD(FLIP_PARTITION_COUPLED_MESH_LIST(proc_idx)%PTR, &
-                  & COUPLED_MESH_DECOMPOSITION%NODE_DOMAIN(COUPLED_DECOMPOSITION%INTER_EDGES(inter_edge_idx,2)-1), &
-                  &  ERR,ERROR,*999)
-
-                CALL LIST_ITEM_ADD(FLIP_PARTITION_INTERFACE_MESH_LIST(proc_idx)%PTR, &
-                  & INTERFACE_MESH_DECOMPOSITION%NODE_DOMAIN(COUPLED_DECOMPOSITION%INTER_EDGES(inter_edge_idx,1)-1), &
-                  &  ERR,ERROR,*999)
-
-              END IF
-
-            END DO !inter_edge_idx
-
-            CALL LIST_DETACH_AND_DESTROY(FLIP_PARTITION_COUPLED_MESH_LIST(proc_idx)%PTR, &
-              & NUMBER_OF_PROCESSORS, FLIP_PARTITION_COUPLED_MESH_PROCESSOR, ERR,ERROR,*999)
-
-            NUMBER_OF_PROCESSOR_IDS_IN_LIST = 0
-
-            DO idx = 1,  NUMBER_OF_PROCESSORS
-
-              DOMAIN_ID = FLIP_PARTITION_COUPLED_MESH_PROCESSOR(idx)
-
-              NUMBER_OF_PROCESSOR_IDS_IN_LIST(DOMAIN_ID+1) =  NUMBER_OF_PROCESSOR_IDS_IN_LIST(DOMAIN_ID+1) +1
-
-            END DO ! idx
-
-            FLIP_PARTITION(proc_idx,1) = MAXLOC(NUMBER_OF_PROCESSOR_IDS_IN_LIST,1)-1
-            FLIP_PARTITION(proc_idx,2) = proc_idx - 1
-
-            DEALLOCATE(FLIP_PARTITION_COUPLED_MESH_PROCESSOR)
-
-          END DO  !proc_idx
-
-          DO node_domain_idx = 0, SIZE(COUPLED_MESH_DECOMPOSITION%NODE_DOMAIN,1) -1
-
-            LOC = MINLOC(ABS(FLIP_PARTITION(:,1)-COUPLED_MESH_DECOMPOSITION%NODE_DOMAIN(node_domain_idx)), 1)
-
-            COUPLED_MESH_DECOMPOSITION%NODE_DOMAIN(node_domain_idx) =  FLIP_PARTITION(LOC,2)
-
-          END DO !node_domain_idx
-
-
-          IF(ALLOCATED(FLIP_PARTITION_COUPLED_MESH_PROCESSOR)) DEALLOCATE(FLIP_PARTITION_COUPLED_MESH_PROCESSOR)
-          IF(ALLOCATED(FLIP_PARTITION)) DEALLOCATE(FLIP_PARTITION)
-          IF(ALLOCATED(NUMBER_OF_PROCESSOR_IDS_IN_LIST)) DEALLOCATE(NUMBER_OF_PROCESSOR_IDS_IN_LIST)
-
-        ELSE
-          CALL FlagError(" INTERFACE_MESH_DECOMPOSITION is not associated.",ERR,ERROR,*999)
-        ENDIF
-      ELSE
-        CALL FlagError(" COUPLED_MESH_DECOMPOSITION is not associated.",ERR,ERROR,*999)
-      ENDIF
-    ELSE
-      CALL FlagError(" COUPLED_DECOMPOSITION is not associated.",ERR,ERROR,*999)
-    END IF
-    EXITS("COUPLED_DECOMPOSITION_FLIP_PARTITION")
-    RETURN
-999 ERRORSEXITS("COUPLED_DECOMPOSITION_FLIP_PARTITION",ERR,ERROR)
-    RETURN 1
-  END SUBROUTINE COUPLED_DECOMPOSITION_FLIP_PARTITION
-
 !========================================================================================================
-! The following subroutine updates the new geometric field.
-!========================================================================================================
+  !>The following subroutine updates the new geometric field.
+
   SUBROUTINE DECOMPOSITION_ASSIGN_DECOMPOSITION_FIELD(FIELD,DECOMPOSITION,VARIABLE_TYPE,ERR,ERROR,*)
 
     !Argument variables
@@ -2512,11 +2409,8 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
-    TYPE(VARYING_STRING)               :: LOCAL_ERROR
     TYPE(MESH_TYPE), POINTER           :: MESH
     INTEGER(INTG)                      :: DOMAIN,MY_COMPUTATIONAL_NODE, node_idx, TOTAL_NODES
-    TYPE(FIELD_VARIABLE_TYPE), POINTER :: FIELD_VARIABLE
-    TYPE(VARYING_STRING)               :: localError
 
     ENTERS("DECOMPOSITION_ASSIGN_DECOMPOSITION_FIELD",ERR,ERROR,*999)
 
@@ -2552,8 +2446,8 @@ CONTAINS
   END SUBROUTINE DECOMPOSITION_ASSIGN_DECOMPOSITION_FIELD
 
 !========================================================================================================
-! The following subroutine updates the decomposition field of the coupled mesh graph G_i.
-!========================================================================================================
+  !>The following subroutine updates the decomposition field of the coupled mesh graph G_i.
+
 
   SUBROUTINE COUPLED_DECOMPOSITION_UPDATE_DECOMPOSITION(COUPLED_DECOMPOSITION,DECOMPOSITION,ERR,ERROR,*)
 
@@ -2563,11 +2457,8 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
-    TYPE(VARYING_STRING)            :: LOCAL_ERROR
     TYPE(MESH_TYPE), POINTER        :: MESH
-    INTEGER(INTG)                   :: DOMAIN, mapping_idx, NUMBER_OF_COMPUTATIONAL_NODES, new_node_idx, node_idx, &
-      & TOTAL_NODES
-    TYPE(FIELD_VARIABLE_TYPE), POINTER :: FIELD_VARIABLE
+    INTEGER(INTG)                   :: mapping_idx, NUMBER_OF_COMPUTATIONAL_NODES
     TYPE(DECOMPOSITION_TYPE), POINTER  :: NEW_DECOMPOSITION
 
     ENTERS("COUPLED_DECOMPOSITION_UPDATE_DECOMPOSITION",ERR,ERROR,*999)
@@ -2584,7 +2475,7 @@ CONTAINS
 
           CALL DECOMPOSITIONS_INITIALISE(MESH,ERR,ERROR,*999)
 
-          CALL DECOMPOSITION_CREATE_START(COUPLED_DECOMPOSITION%mesh_idx,MESH,NEW_DECOMPOSITION,ERR,ERROR,*999)
+          CALL DECOMPOSITION_CREATE_START(DECOMPOSITION%USER_NUMBER,MESH,NEW_DECOMPOSITION,ERR,ERROR,*999)
 
           CALL DECOMPOSITION_NODE_BASED_DECOMPOSITION_SET(NEW_DECOMPOSITION, .TRUE. , ERR, error, *999)
 
@@ -2622,8 +2513,7 @@ CONTAINS
 
 
 !========================================================================================================
-! The following subroutine updates the decomposition field of the interface mesh graph G_I.
-!========================================================================================================
+ !>The following subroutine updates the decomposition field of the interface mesh graph G_I.
 
   SUBROUTINE COUPLED_DECOMPOSITION_UPDATE_INTERFACE_DECOMPOSITION(COUPLED_DECOMPOSITION,DECOMPOSITION,ERR,ERROR,*)
 
@@ -2632,22 +2522,13 @@ CONTAINS
     TYPE(COUPLED_DECOMPOSITION_TYPE), POINTER, INTENT(IN) :: COUPLED_DECOMPOSITION !<The mesh which is generated by the generated mesh \todo is this necessary???
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
-    !Local Variables
-    TYPE(VARYING_STRING)               :: LOCAL_ERROR
-    TYPE(MESH_TYPE), POINTER           :: MESH
-    INTEGER(INTG)                      :: DOMAIN,MY_COMPUTATIONAL_NODE, node_idx, TOTAL_NODES
-    TYPE(FIELD_VARIABLE_TYPE), POINTER :: FIELD_VARIABLE
-    TYPE(VARYING_STRING)               :: localError
 
     ENTERS("COUPLED_DECOMPOSITION_UPDATE_INTERFACE_DECOMPOSITION",ERR,ERROR,*999)
 
     IF(ASSOCIATED(COUPLED_DECOMPOSITION)) THEN
       IF(ASSOCIATED(DECOMPOSITION)) THEN
-
         NULLIFY(DECOMPOSITION)
         DECOMPOSITION=>COUPLED_DECOMPOSITION%COUPLED_FIELDS(3)%PTR%DECOMPOSITION
-
-
       ELSE
         CALL FlagError("Decomposition is not associated.",ERR,ERROR,*999)
       ENDIF
@@ -2669,8 +2550,6 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
-    TYPE(VARYING_STRING)               :: LOCAL_ERROR
-    TYPE(MESH_TYPE), POINTER           :: MESH
     INTEGER(INTG)                      :: inter_edge_idx, MY_COMPUTATIONAL_NODES, proc_idx, PROC_ID, TOTAL_COMPUTATIONAL_NODES
     INTEGER(INTG), ALLOCATABLE         :: SUB_DOMAIN_COUNTER(:), TEMP_ARRAY(:,:)
     TYPE(DECOMPOSITION_TYPE), POINTER  :: INTERFACE_MESH_DECOMPOSITION
@@ -2733,13 +2612,13 @@ CONTAINS
   END SUBROUTINE COUPLED_MESH_VERTICES_TO_IMPOSE_FIXED_PARTITIONING
 
 !=====================================================================================================================
- ! This subroutine builds mapping between numbering of a vertices of the new graph G_{i,merged} and the orginal graph G_i.
-!=====================================================================================================================
+  !>This subroutine builds mapping between numbering of a vertices of the new graph G_{i,merged} and the orginal graph G_i.
+
  SUBROUTINE COUPLED_DECOMPOSITION_NEW_TO_OLD_VERTEX_MAPPING(COUPLED_DECOMPOSITION, NEW_TO_OLD_INDEX_MAPPING, ERR,ERROR,*)
 
     !Argument variables
     TYPE(COUPLED_DECOMPOSITION_TYPE), POINTER, INTENT(IN) :: COUPLED_DECOMPOSITION !<Coupled decomposition type objects.
-    INTEGER(INTG), ALLOCATABLE, INTENT(OUT) :: NEW_TO_OLD_INDEX_MAPPING(:,:) !<NEW_TO_OLD_INDEX_MAPPING(old_vertex_idx,:). Cotains one-to-one mapping between new vertex ids and old vertex ids
+    INTEGER(INTG), ALLOCATABLE, INTENT(OUT) :: NEW_TO_OLD_INDEX_MAPPING(:,:) !<NEW_TO_OLD_INDEX_MAPPING(old_vertex_idx,:). Contains one-to-one mapping between new vertex ids and old vertex ids
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
@@ -2799,7 +2678,7 @@ CONTAINS
           ELSE
 
             NEW_TO_OLD_INDEX_MAPPING(old_vertex_idx,2)= &
-              NEW_TO_OLD_INDEX_MAPPING(COUPLED_DECOMPOSITION%INTER_EDGES(1,proc_idx),2)
+              & NEW_TO_OLD_INDEX_MAPPING(COUPLED_DECOMPOSITION%INTER_EDGES(1,proc_idx),2)
 
           END IF
         END DO ! OLD_VERTEX_idx
@@ -2817,8 +2696,8 @@ CONTAINS
 
 
 ! =========================================================================================================!
-!THe following subroutine build adjacencies of the new coupled mesh graph G_{i,merged}.
-! =========================================================================================================!
+  !>The following subroutine build adjacencies of the new coupled mesh graph G_{i,merged}.
+
   SUBROUTINE COUPLED_DECOMPOSITION_GET_NEW_GRAPH(COUPLED_DECOMPOSITION, COUPLED_MESH, &
    & NEW_TO_OLD_INDEX_MAPPING, ERR, ERROR,* )
 
@@ -2832,7 +2711,7 @@ CONTAINS
       & NUMBER_OF_COMPUTATIONAL_NODES, node_idx, NODES_TO_RETAIN, NODES_TO_COLLAPSE, NUMBER_OF_ROWS_TO_DELETE, &
       & proc_idx, surrounding_node_idx, SURROUNDING_NODE
     INTEGER(INTG), ALLOCATABLE    :: TEMP_ARRAY(:), TEMP_ARRAY_2D(:,:)
-    LOGICAL :: FLAG1, FLAG2
+
 
     ENTERS("COUPLED_DECOMPOSITION_NEW_TO_OLD_VERTEX_MAPPING",ERR,ERROR,*999)
 
@@ -3003,5 +2882,4 @@ CONTAINS
 
   END SUBROUTINE COUPLED_DECOMPOSITION_GET_NEW_GRAPH
 
-  
 END MODULE REGION_ROUTINES

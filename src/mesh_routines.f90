@@ -4246,14 +4246,13 @@ CONTAINS
     INTEGER(INTG),        INTENT(OUT)           :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT)           :: ERROR !<The error string
     !Local Variables
-    INTEGER(INTG) :: adjacent_node, adjacent_node_idx, adjacent_element,  &
-      & component_idx, derivative_idx, DUMMY_ERR, domain_idx, domain_no, MY_COMPUTATIONAL_NODE_NUMBER, ne, nn, np, ny, &
-      & NUMBER_OF_DOMAINS, NUMBER_OF_ADJACENT_ELEMENTS, NUMBER_OF_ADJACENT_NODES, &
+    INTEGER(INTG) :: adjacent_node, adjacent_element,  &
+      & component_idx, derivative_idx, DUMMY_ERR, domain_idx, domain_no, MY_COMPUTATIONAL_NODE_NUMBER, ne, ny, &
+      & NUMBER_OF_DOMAINS, NUMBER_OF_ADJACENT_NODES, &
       & version_idx, node_idx, no_adjacent_node, no_adjacent_element
     INTEGER(INTG), ALLOCATABLE :: ADJACENT_NOdes(:),DOMAINS(:),LOCAL_NODE_NUMBERS(:),LOCAL_DOF_NUMBERS(:)
     TYPE(LIST_TYPE), POINTER :: ADJACENT_DOMAINS_LIST
     TYPE(LIST_PTR_TYPE), ALLOCATABLE :: ADJACENT_NODES_LIST(:)
-    TYPE(BASIS_TYPE), POINTER :: BASIS
     TYPE(MESH_TYPE), POINTER :: MESH
     TYPE(DECOMPOSITION_TYPE), POINTER :: DECOMPOSITION
     TYPE(DOMAIN_MAPPING_TYPE), POINTER :: DOFS_MAPPING,NODE_MAPPING
@@ -4748,12 +4747,11 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
-    INTEGER(INTG) :: adjacent_node, adjacent_element, component_idx, &
-      & derivative_idx, decomposition_idx, domain_idx, domain_idx2, domain_no, DUMMY_ERR, &
+    INTEGER(INTG) :: adjacent_node, component_idx, domain_idx, domain_idx2, domain_no, DUMMY_ERR, &
       & element_idx, ghost_element,MY_COMPUTATIONAL_NODE_NUMBER, MAX_NUMBER_DOMAINS, ne, no_adjacent_node, &
-      & no_ghost_element, no_adjacent_element, no_computational_node, NUMBER_OF_DOMAINS, &
-      & NUMBER_OF_ELEMENTS_PER_DOMAIN, NUMBER_OF_GHOST_ELEMENTS, ny, number_computational_nodes, version_idx
-    INTEGER(INTG), ALLOCATABLE :: ELEMENT_COUNT(:),LOCAL_ELEMENT_NUMBERS(:),LOCAL_DOF_NUMBERS(:), &
+      & no_ghost_element, no_adjacent_element, NUMBER_OF_DOMAINS, &
+      & NUMBER_OF_ELEMENTS_PER_DOMAIN, NUMBER_OF_GHOST_ELEMENTS, number_computational_nodes
+    INTEGER(INTG), ALLOCATABLE :: LOCAL_ELEMENT_NUMBERS(:), &
       & NUMBER_INTERNAL_ELEMENTS(:), NUMBER_BOUNDARY_ELEMENTS(:)
     INTEGER(INTG), ALLOCATABLE :: ALL_DOMAINS(:), DOMAINS(:), GHOST_ELEMENTS(:)
     LOGICAL :: BOUNDARY_DOMAIN
@@ -4764,7 +4762,7 @@ CONTAINS
     TYPE(DECOMPOSITION_TYPE), POINTER :: DECOMPOSITION
     TYPE(DOMAIN_MAPPING_TYPE), POINTER :: ELEMENTS_MAPPING
     TYPE(DOMAIN_MAPPING_TYPE), POINTER :: NODES_MAPPING
-    TYPE(VARYING_STRING) :: DUMMY_ERROR,LOCAL_ERROR
+    TYPE(VARYING_STRING) :: DUMMY_ERROR
 
     ENTERS("DOMAIN_MAPPINGS_ELEMENTS_CALCULATE_NEW",ERR,ERROR,*999)
 
@@ -4966,8 +4964,6 @@ CONTAINS
                   ENDDO !domain_idx
 
                   CALL DOMAIN_MAPPINGS_LOCAL_FROM_GLOBAL_CALCULATE(ELEMENTS_MAPPING,ERR,ERROR,*999)
-
-
 
                   IF(DIAGNOSTICS1) THEN
                     CALL WRITE_STRING(DIAGNOSTIC_OUTPUT_TYPE,"Element mappings :",ERR,ERROR,*999)
@@ -11108,7 +11104,7 @@ CONTAINS
 
   END SUBROUTINE DECOMPOSITION_USER_NUMBER_TO_DECOMPOSITION
 !================================================================================================================================
-  !> Following routine sets tpwgts
+  !> Following routine sets tpwgts data structure for ParMETIS
  SUBROUTINE DECOMPOSITION_TPWGT_SET(DECOMPOSITION, TPWGT, ERR, error, *)
     !Argument
     TYPE(DECOMPOSITION_TYPE), POINTER :: DECOMPOSITION !<A pointer to the decomposition to calculate the vertex domains for.
@@ -11159,16 +11155,15 @@ CONTAINS
       COUPLED_MESH=>DECOMPOSITION%MESH
       IF(ASSOCIATED(COUPLED_MESH)) THEN
 
-            DECOMPOSITION%NODE_BASED_DECOMPOSITION = NODE_BASED_DECOMPOSITION
-        ALLOCATE(DECOMPOSITION%NODE_DOMAIN(0:COUPLED_MESH%TOPOLOGY(1)%PTR%NODES%numberOfnodes-1), &
-            & STAT=ERR)
+        DECOMPOSITION%NODE_BASED_DECOMPOSITION = NODE_BASED_DECOMPOSITION
+        ALLOCATE(DECOMPOSITION%NODE_DOMAIN(0:COUPLED_MESH%TOPOLOGY(1)%PTR%NODES%numberOfnodes-1),STAT=ERR)
         IF(ERR/=0) &
-            & CALL FlagError("Could not allocate new decomposition node domain.",ERR,ERROR,*999)
+          & CALL FlagError("Could not allocate new decomposition node domain.",ERR,ERROR,*999)
 
       ELSE
         CALL FlagError("Coupled mesh is not associated.",ERR,ERROR,*999)
       END IF
-      ELSE
+    ELSE
       CALL FlagError("Decomposition is not associated.",ERR,ERROR,*999)
     END IF
     RETURN
@@ -11259,7 +11254,8 @@ CONTAINS
   END SUBROUTINE DECOMPOSITION_NODE_WEIGHT_SET
 
 !================================================================================================================
- !> Calculate graph information for a mesh.
+ !> Calculate graph information for a mesh object. More specifically it calculates surroundingNode data structure...
+ !> ... for a mesh based on its interpolation type and number of nodes per element.
 
   SUBROUTINE GET_SURROUNDING_NODES(MESH, ERR, ERROR, *)
     ! Arguments
@@ -11278,7 +11274,8 @@ CONTAINS
 
       IF(ASSOCIATED(BASIS)) THEN
 
-        IF(BASIS%NUMBER_OF_NODES==2_INTG) THEN
+        IF(BASIS%NUMBER_OF_NODES==2_INTG .AND. BASIS%TYPE==BASIS_LAGRANGE_HERMITE_TP_TYPE &
+          & .AND. BASIS%INTERPOLATION_XI(1)==BASIS_LINEAR_LAGRANGE_INTERPOLATION) THEN
 
           CALL GET_SURROUNDING_NODES_LINEAR_LINE_MESH(MESH, ERR, error, *999)
 
@@ -11361,11 +11358,10 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT)        :: ERROR !<The error string
 
     ! Local variables
-    INTEGER(INTG)                            :: AdjacentNode,ElementIdx,ElementNUmberOfNOdes,MeshNUmberOfNOdes, &
-                                                & MeshNOde,NOdeIdx,Node,NUMBER_OF_SURROUNDING_NODES,PROCID
+    INTEGER(INTG)                            :: AdjacentNode,ElementIdx,MeshNUmberOfNOdes, &
+      & MeshNOde,NOdeIdx,NUMBER_OF_SURROUNDING_NODES
     TYPE(MeshNodesType), pointer             :: meshNOdes
-    INTEGER(INTG), ALLOCATABLE               :: ElementNodes(:,:), SURROUNDING_NODES(:)
-    LOGICAL                                  :: Flag
+    INTEGER(INTG), ALLOCATABLE               :: SURROUNDING_NODES(:)
     TYPE(LIST_PTR_TYPE), ALLOCATABLE         :: SURROUNDING_NODE_LIST(:)
 
     ENTERS("GET_SURROUNDING_NODES_QUADRATIC_QUADRILATERAL_MESH",ERR,ERROR,*999)
@@ -11395,7 +11391,7 @@ CONTAINS
 
             IF(MESH%TOPOLOGY(1)%ptr%Elements%Elements(ElementIdx)%GLOBAL_ELEMENT_NODES(NOdeIdx) == MeshNOde) THEN
 
-              IF(NOdeIdx == 1) THEN
+              IF(NOdeIdx == 1) THEN !Local node 1 is surrounded with node 2 and 4.
 
                 AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(2)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
@@ -11403,7 +11399,7 @@ CONTAINS
                 AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(4)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-              ELSE IF(NOdeIdx == 2) THEN
+              ELSE IF(NOdeIdx == 2) THEN !Local node 3 is surrounded with node 1 and 3.
 
                 AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(1)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
@@ -11411,7 +11407,7 @@ CONTAINS
                 AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(3)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-              ELSE IF(NOdeIdx == 3) THEN
+              ELSE IF(NOdeIdx == 3) THEN !Local node 1 is surrounded with node 2 and 6.
 
                 AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(2)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
@@ -11419,7 +11415,7 @@ CONTAINS
                 AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(6)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-              ELSE IF(NOdeIdx == 4) THEN
+              ELSE IF(NOdeIdx == 4) THEN !Local node 4 is surrounded with node 1 and 7.
 
                 AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(1)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
@@ -11428,11 +11424,11 @@ CONTAINS
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
 
-              ELSE IF(NOdeIdx == 5) THEN
+              ELSE IF(NOdeIdx == 5) THEN !Local node 5 is surrounded with no node.
                 AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(5)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-              ELSE IF(NOdeIdx == 6) THEN
+              ELSE IF(NOdeIdx == 6) THEN !Local node 6 is surrounded with node 3 and 9.
 
                 AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(3)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
@@ -11440,7 +11436,7 @@ CONTAINS
                 AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(9)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-              ELSE IF(NOdeIdx == 7) THEN
+              ELSE IF(NOdeIdx == 7) THEN !Local node 7 is surrounded with node 8 and 4.
 
                 AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(4)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
@@ -11448,7 +11444,7 @@ CONTAINS
                 AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(8)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-              ELSE IF(NOdeIdx == 8) THEN
+              ELSE IF(NOdeIdx == 8) THEN !Local node 8 is surrounded with node 7 and 9.
 
                 AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(7)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
@@ -11457,7 +11453,7 @@ CONTAINS
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
 
-              ELSE IF(NOdeIdx == 9) THEN
+              ELSE IF(NOdeIdx == 9) THEN !Local node 9 is surrounded with node 6 and 8.
 
                 AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(6)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
@@ -11510,11 +11506,10 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT)        :: ERROR !<The error string
 
     ! Local variables
-    INTEGER(INTG)                            :: AdjacentNode,ElementIdx,ElementNUmberOfNOdes,MeshNUmberOfNOdes, &
-                                                & MeshNOde,NOdeIdx,Node,NUMBER_OF_SURROUNDING_NODES,PROCID
+    INTEGER(INTG)                            :: AdjacentNode,ElementIdx,MeshNUmberOfNOdes, &
+      & MeshNOde,NOdeIdx,NUMBER_OF_SURROUNDING_NODES
     TYPE(MeshNodesType), pointer             :: meshNOdes
-    INTEGER(INTG), ALLOCATABLE               :: ElementNodes(:,:), SURROUNDING_NODES(:)
-    LOGICAL                                  :: Flag
+    INTEGER(INTG), ALLOCATABLE               :: SURROUNDING_NODES(:)
     TYPE(LIST_PTR_TYPE), ALLOCATABLE         :: SURROUNDING_NODE_LIST(:)
 
     ENTERS("GET_SURROUNDING_NODES_CUBIC_QUADRILATERAL_MESH",ERR,ERROR,*999)
@@ -11541,14 +11536,14 @@ CONTAINS
 
             IF(MESH%TOPOLOGY(1)%ptr%Elements%Elements(ElementIdx)%GLOBAL_ELEMENT_NODES(NOdeIdx) == MeshNOde) THEN
 
-              IF(NOdeIdx == 1) THEN
+              IF(NOdeIdx == 1) THEN !Local node 1 is surrounded with node 2 and 5.
                 AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(2)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
                 AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(5)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-              ELSE IF(NOdeIdx == 2) THEN
+              ELSE IF(NOdeIdx == 2) THEN !Local node 2 is surrounded with node 1 and 3.
 
                 AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(1)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
@@ -11556,7 +11551,7 @@ CONTAINS
                 AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(3)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-              ELSE IF(NOdeIdx == 3) THEN
+              ELSE IF(NOdeIdx == 3) THEN !Local node 3 is surrounded with node 2 and 4.
 
                 AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(2)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
@@ -11564,7 +11559,7 @@ CONTAINS
                 AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(4)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-              ELSE IF(NOdeIdx == 4) THEN
+              ELSE IF(NOdeIdx == 4) THEN !Local node 4 is surrounded with node 3 and 8.
 
                 AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(3)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
@@ -11572,23 +11567,23 @@ CONTAINS
                 AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(8)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-              ELSE IF(NOdeIdx == 5) THEN
+              ELSE IF(NOdeIdx == 5) THEN !Local node 5 is surrounded with node 1 and 9.
                 AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(1)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
                 AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(9)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-              ELSE IF(NOdeIdx == 6) THEN
+              ELSE IF(NOdeIdx == 6) THEN !Local node 6 not surrounded with any node.
 
                 AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(6)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-              ELSE IF(NOdeIdx == 7) THEN
+              ELSE IF(NOdeIdx == 7) THEN !Local node 7 not surrounded with any node.
 
                 AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(7)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-              ELSE IF(NOdeIdx == 8) THEN
+              ELSE IF(NOdeIdx == 8) THEN !Local node 8 is surrounded with node 4 and 12.
 
                 AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(4)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
@@ -11596,7 +11591,7 @@ CONTAINS
                 AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(12)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-              ELSE IF(NOdeIdx == 9) THEN
+              ELSE IF(NOdeIdx == 9) THEN !Local node 9 is surrounded with node 5 and 13.
 
                 AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(5)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
@@ -11604,17 +11599,17 @@ CONTAINS
                 AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(13)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-              ELSE IF(NOdeIdx == 10) THEN
+              ELSE IF(NOdeIdx == 10) THEN !Local node 10 is not surrounded with any node.
 
                 AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(10)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-              ELSE IF(NOdeIdx == 11) THEN
+              ELSE IF(NOdeIdx == 11) THEN !Local node 11 is not surrounded with any node.
 
                 AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(11)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-              ELSE IF(NOdeIdx == 12) THEN
+              ELSE IF(NOdeIdx == 12) THEN !Local node 12 is surrounded with node 8 and 16.
 
                 AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(8)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
@@ -11623,13 +11618,13 @@ CONTAINS
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
 
-              ELSE IF(NOdeIdx == 13) THEN
+              ELSE IF(NOdeIdx == 13) THEN !Local node 13 is surrounded with node 9 and 14.
                 AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(9)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
                 AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(14)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-              ELSE IF(NOdeIdx == 14) THEN
+              ELSE IF(NOdeIdx == 14) THEN !Local node 14 is surrounded with node 13 and 15.
 
                 AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(13)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
@@ -11637,7 +11632,7 @@ CONTAINS
                 AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(15)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-              ELSE IF(NOdeIdx == 15) THEN
+              ELSE IF(NOdeIdx == 15) THEN !Local node 15 is surrounded with node 5 and 16.
 
                 AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(14)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
@@ -11645,7 +11640,7 @@ CONTAINS
                 AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(16)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-              ELSE IF(NOdeIdx == 16) THEN
+              ELSE IF(NOdeIdx == 16) THEN !Local node 16 is surrounded with node 15 and 12.
 
                 AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(15)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
@@ -11698,11 +11693,10 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT)        :: ERROR !<The error string
 
     ! Local variables
-    INTEGER(INTG)                            :: AdjacentNode,ElementIdx,ElementNUmberOfNOdes,MeshNUmberOfNOdes, &
-                                                & MeshNOde,NOdeIdx,Node,NUMBER_OF_SURROUNDING_NODES,PROCID
+    INTEGER(INTG)                            :: AdjacentNode,ElementIdx,MeshNUmberOfNOdes, &
+      & MeshNOde,NOdeIdx,NUMBER_OF_SURROUNDING_NODES
     TYPE(MeshNodesType), pointer             :: meshNOdes
-    INTEGER(INTG), ALLOCATABLE               :: ElementNodes(:,:), SURROUNDING_NODES(:)
-    LOGICAL                                  :: Flag
+    INTEGER(INTG), ALLOCATABLE               :: SURROUNDING_NODES(:)
     TYPE(LIST_PTR_TYPE), ALLOCATABLE         :: SURROUNDING_NODE_LIST(:)
 
     ENTERS("GET_SURROUNDING_NODES_QUADRATIC_HEXAHEDRAL_MESH",ERR,ERROR,*999)
@@ -11999,11 +11993,10 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT)        :: ERROR !<The error string
 
     ! Local variables
-    INTEGER(INTG)                            :: AdjacentNode,ElementIdx,ElementNUmberOfNOdes,MeshNUmberOfNOdes, &
-                                                & MeshNOde,NOdeIdx,Node,NUMBER_OF_SURROUNDING_NODES,PROCID
+    INTEGER(INTG)                            :: AdjacentNode,ElementIdx,MeshNUmberOfNOdes, &
+      & MeshNOde,NOdeIdx,NUMBER_OF_SURROUNDING_NODES
     TYPE(MeshNodesType), pointer             :: meshNOdes
-    INTEGER(INTG), ALLOCATABLE               :: ElementNodes(:,:), SURROUNDING_NODES(:)
-    LOGICAL                                  :: Flag
+    INTEGER(INTG), ALLOCATABLE               :: SURROUNDING_NODES(:)
     TYPE(LIST_PTR_TYPE), ALLOCATABLE         :: SURROUNDING_NODE_LIST(:)
 
     ENTERS("GET_SURROUNDING_NODES_LINEAR_HEXAHEDRAL_MESH",ERR,ERROR,*999)
@@ -12163,11 +12156,10 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT)        :: ERROR !<The error string
 
     ! Local variables
-    INTEGER(INTG)                            :: AdjacentNode,ElementIdx,ElementNUmberOfNOdes,MeshNUmberOfNOdes, &
-                                                & MeshNOde,NOdeIdx,Node,NUMBER_OF_SURROUNDING_NODES,PROCID
+    INTEGER(INTG)                            :: AdjacentNode,ElementIdx,MeshNUmberOfNOdes, &
+      & MeshNOde,NOdeIdx,NUMBER_OF_SURROUNDING_NODES
     TYPE(MeshNodesType), pointer             :: meshNOdes
-    INTEGER(INTG), ALLOCATABLE               :: ElementNodes(:,:), SURROUNDING_NODES(:)
-    LOGICAL                                  :: Flag
+    INTEGER(INTG), ALLOCATABLE               :: SURROUNDING_NODES(:)
     TYPE(LIST_PTR_TYPE), ALLOCATABLE         :: SURROUNDING_NODE_LIST(:)
 
     ENTERS("GET_SURROUNDING_NODES_LINEAR_LINE_MESH",ERR,ERROR,*999)
@@ -12259,11 +12251,10 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT)        :: ERROR !<The error string
 
     ! Local variables
-    INTEGER(INTG)                            :: AdjacentNode,ElementIdx,ElementNUmberOfNOdes,MeshNUmberOfNOdes, &
-                                                & MeshNOde,NOdeIdx,Node,NUMBER_OF_SURROUNDING_NODES,PROCID
+    INTEGER(INTG)                            :: AdjacentNode,ElementIdx,MeshNUmberOfNOdes, &
+      & MeshNOde,NOdeIdx,NUMBER_OF_SURROUNDING_NODES
     TYPE(MeshNodesType), pointer             :: meshNOdes
-    INTEGER(INTG), ALLOCATABLE               :: ElementNodes(:,:), SURROUNDING_NODES(:)
-    LOGICAL                                  :: Flag
+    INTEGER(INTG), ALLOCATABLE               :: SURROUNDING_NODES(:)
     TYPE(LIST_PTR_TYPE), ALLOCATABLE         :: SURROUNDING_NODE_LIST(:)
 
     ENTERS("GET_SURROUNDING_NODES_LINEAR_LINE_MESH",ERR,ERROR,*999)
@@ -12336,11 +12327,10 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT)        :: ERROR !<The error string
 
     ! Local variables
-    INTEGER(INTG)                            :: AdjacentNode,ElementIdx,ElementNUmberOfNOdes,MeshNUmberOfNOdes, &
-                                                & MeshNOde,NOdeIdx,Node,NUMBER_OF_SURROUNDING_NODES,PROCID
+    INTEGER(INTG)                            :: AdjacentNode,ElementIdx,MeshNUmberOfNOdes, &
+                                                & MeshNOde,NOdeIdx,NUMBER_OF_SURROUNDING_NODES
     TYPE(MeshNodesType), pointer             :: meshNOdes
-    INTEGER(INTG), ALLOCATABLE               :: ElementNodes(:,:), SURROUNDING_NODES(:)
-    LOGICAL                                  :: Flag
+    INTEGER(INTG), ALLOCATABLE               :: SURROUNDING_NODES(:)
     TYPE(LIST_PTR_TYPE), ALLOCATABLE         :: SURROUNDING_NODE_LIST(:)
 
     ENTERS("GET_SURROUNDING_NODES_QUADRATIC_LINE_MESH",ERR,ERROR,*999)
@@ -12426,11 +12416,10 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT)        :: ERROR !<The error string
 
     ! Local variables
-    INTEGER(INTG)                            :: AdjacentNode,ElementIdx,ElementNUmberOfNOdes,MeshNUmberOfNOdes, &
-                                                & MeshNOde,NOdeIdx,Node,NUMBER_OF_SURROUNDING_NODES,PROCID
+    INTEGER(INTG)                            :: AdjacentNode,ElementIdx,MeshNUmberOfNOdes, &
+      & MeshNOde,NOdeIdx,NUMBER_OF_SURROUNDING_NODES
     TYPE(MeshNodesType), pointer             :: meshNOdes
-    INTEGER(INTG), ALLOCATABLE               :: ElementNodes(:,:), SURROUNDING_NODES(:)
-    LOGICAL                                  :: Flag
+    INTEGER(INTG), ALLOCATABLE               :: SURROUNDING_NODES(:)
     TYPE(LIST_PTR_TYPE), ALLOCATABLE         :: SURROUNDING_NODE_LIST(:)
 
     ENTERS("GET_SURROUNDING_NODES_QUADRATIC_TRIANGULAR_MESH",ERR,ERROR,*999)
@@ -12547,11 +12536,10 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT)        :: ERROR !<The error string
 
     ! Local variables
-    INTEGER(INTG)                            :: AdjacentNode,ElementIdx,ElementNUmberOfNOdes,MeshNUmberOfNOdes, &
-                                                & MeshNOde,NOdeIdx,Node,NUMBER_OF_SURROUNDING_NODES,PROCID
+    INTEGER(INTG)                            :: AdjacentNode,ElementIdx,MeshNUmberOfNOdes, &
+      & MeshNOde,NOdeIdx,NUMBER_OF_SURROUNDING_NODES
     TYPE(MeshNodesType), pointer             :: meshNOdes
-    INTEGER(INTG), ALLOCATABLE               :: ElementNodes(:,:), SURROUNDING_NODES(:)
-    LOGICAL                                  :: Flag
+    INTEGER(INTG), ALLOCATABLE               :: SURROUNDING_NODES(:)
     TYPE(LIST_PTR_TYPE), ALLOCATABLE         :: SURROUNDING_NODE_LIST(:)
 
 
@@ -12560,7 +12548,6 @@ CONTAINS
 
     IF(ASSOCIATED(MESH)) THEN
       meshNOdes=>MESH%TOPOLOGY(1)%PTR%NODES
-      PROCID=COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR)
       ! Total nodes in a mesh
       CALL MeshTopologyNodesNumberOfNodesGet(meshNodes,MeshnumberOfNodes,ERR,ERROR,*999)
 
@@ -12577,8 +12564,6 @@ CONTAINS
         CALL LIST_CREATE_FINISH(SURROUNDING_NODE_LIST(MeshNOde)%PTR,ERR,ERROR,*999)
 
         DO ElementIdx = 1, SIZE(MESH%TOPOLOGY(1)%ptr%Elements%Elements,1)
-
-          Flag = .FALSE.
 
           DO NOdeIdx = 1, 4
 
@@ -12640,11 +12625,10 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT)               :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT)        :: ERROR !<The error string
     ! Local variables
-    INTEGER(INTG)                            :: AdjacentNode,ElementIdx,ElementNUmberOfNOdes,MeshNUmberOfNOdes, &
-                                                & MeshNOde,NOdeIdx,Node,NUMBER_OF_SURROUNDING_NODES,PROCID
+    INTEGER(INTG)                            :: AdjacentNode,ElementIdx,MeshNUmberOfNOdes, &
+      & MeshNOde,NOdeIdx,NUMBER_OF_SURROUNDING_NODES
     TYPE(MeshNodesType), pointer             :: meshNOdes
-    INTEGER(INTG), ALLOCATABLE               :: ElementNodes(:,:), SURROUNDING_NODES(:)
-    LOGICAL                                  :: Flag
+    INTEGER(INTG), ALLOCATABLE               :: SURROUNDING_NODES(:)
     TYPE(LIST_PTR_TYPE), ALLOCATABLE         :: SURROUNDING_NODE_LIST(:)
 
     ENTERS("GET_SURROUNDING_NODES_QUADRATIC_TETRAHEDRAL_MESH",ERR,ERROR,*999)
@@ -12652,7 +12636,6 @@ CONTAINS
     IF(ASSOCIATED(MESH)) THEN
 
       meshNOdes=>MESH%TOPOLOGY(1)%PTR%NODES
-      PROCID=COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR)
       ! Total nodes in a mesh
       CALL MeshTopologyNodesNumberOfNodesGet(meshNodes,MeshnumberOfNodes,err,error,*999)
 
@@ -12671,8 +12654,6 @@ CONTAINS
         CALL LIST_CREATE_FINISH(SURROUNDING_NODE_LIST(MeshNOde)%PTR,ERR,ERROR,*999)
 
         DO ElementIdx = 1, SIZE(MESH%TOPOLOGY(1)%ptr%Elements%Elements,1)
-
-          Flag = .FALSE.
 
           DO NOdeIdx = 1, 10
 
@@ -12819,18 +12800,16 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT)        :: ERROR !<The error string
 
     ! Local variables
-    INTEGER(INTG)                            :: AdjacentNode,ElementIdx,ElementNUmberOfNOdes,MeshNUmberOfNOdes, &
-                                                & MeshNOde,NOdeIdx,Node,NUMBER_OF_SURROUNDING_NODES,PROCID
+    INTEGER(INTG)                            :: AdjacentNode,ElementIdx,MeshNUmberOfNOdes, &
+      & MeshNOde,NOdeIdx,NUMBER_OF_SURROUNDING_NODES
     TYPE(MeshNodesType), pointer             :: meshNOdes
-    INTEGER(INTG), ALLOCATABLE               :: ElementNodes(:,:), SURROUNDING_NODES(:)
-    LOGICAL                                  :: Flag
+    INTEGER(INTG), ALLOCATABLE               :: SURROUNDING_NODES(:)
     TYPE(LIST_PTR_TYPE), ALLOCATABLE         :: SURROUNDING_NODE_LIST(:)
 
     ENTERS("GET_SURROUNDING_NODES_LINEAR_TETRAHEDRAL_MESH",ERR,ERROR,*999)
 
     IF(ASSOCIATED(MESH)) THEN
       meshNOdes=>MESH%TOPOLOGY(1)%PTR%NODES
-      PROCID=COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR)
       ! Total nodes in a mesh
       CALL MeshTopologyNodesNumberOfNodesGet(meshNodes,MeshnumberOfNodes,err,error,*999)
 
@@ -12849,8 +12828,6 @@ CONTAINS
         CALL LIST_CREATE_FINISH(SURROUNDING_NODE_LIST(MeshNOde)%PTR,ERR,ERROR,*999)
 
         DO ElementIdx = 1, SIZE(MESH%TOPOLOGY(1)%ptr%Elements%Elements,1)
-
-          Flag = .FALSE.
 
           DO NOdeIdx = 1, 4
 
@@ -12946,18 +12923,16 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT)        :: ERROR !<The error string
 
     ! Local variables
-    INTEGER(INTG)                            :: AdjacentNode,ElementIdx,ElementNUmberOfNOdes,MeshNUmberOfNOdes, &
-                                                & MeshNOde,NOdeIdx,Node,NUMBER_OF_SURROUNDING_NODES,PROCID
+    INTEGER(INTG)                            :: AdjacentNode,ElementIdx,MeshNUmberOfNOdes, &
+      & MeshNOde,NOdeIdx,NUMBER_OF_SURROUNDING_NODES
     TYPE(MeshNodesType), pointer             :: meshNOdes
-    INTEGER(INTG), ALLOCATABLE               :: ElementNodes(:,:), SURROUNDING_NODES(:)
-    LOGICAL                                  :: Flag
+    INTEGER(INTG), ALLOCATABLE               :: SURROUNDING_NODES(:)
     TYPE(LIST_PTR_TYPE), ALLOCATABLE         :: SURROUNDING_NODE_LIST(:)
 
     ENTERS("GET_SURROUNDING_NODES_LINEAR_TRIANGULAR_MESH",ERR,ERROR,*999)
 
     IF(ASSOCIATED(MESH)) THEN
       meshNOdes=>MESH%TOPOLOGY(1)%PTR%NODES
-      PROCID=COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR)
       ! Total nodes in a mesh
       CALL MeshTopologyNodesNumberOfNodesGet(meshNodes,MeshnumberOfNodes,err,error,*999)
 
@@ -12976,8 +12951,6 @@ CONTAINS
         CALL LIST_CREATE_FINISH(SURROUNDING_NODE_LIST(MeshNOde)%PTR,ERR,ERROR,*999)
 
         DO ElementIdx = 1, SIZE(MESH%TOPOLOGY(1)%ptr%Elements%Elements,1)
-
-          Flag = .FALSE.
 
           DO NOdeIdx = 1, 3
 
@@ -13299,8 +13272,6 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     INTEGER(INTG) :: PARMETIS_OPTIONS(3), PROC_ID, proc_idx_receive, proc_idx_send, STATUS(MPI_STATUS_SIZE)
-    TYPE(MESH_TYPE), POINTER :: MESH
-    TYPE(VARYING_STRING) :: LOCAL_ERROR
 
     ENTERS("DECOMPOSITION_NODE_DOMAIN_CALCULATE",ERR,ERROR,*999)
 
