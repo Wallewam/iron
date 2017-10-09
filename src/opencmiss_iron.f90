@@ -61749,7 +61749,7 @@ CONTAINS
 
       DO NOdesIdx = 1, NumberOfNodesInElement
 
-       IF(Mesh%MESH%TOPOLOGY(1)%PTR%ELEMENTS%ELEMENTS(ElementLocalIdx)%MESH_ELEMENT_NODES(NOdesIdx)==NodeIdx) EXIT
+        IF(Mesh%MESH%TOPOLOGY(1)%PTR%ELEMENTS%ELEMENTS(ElementLocalIdx)%MESH_ELEMENT_NODES(NOdesIdx)==NodeIdx) EXIT
 
       END DO
 

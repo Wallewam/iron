@@ -963,7 +963,6 @@ CONTAINS
              VECTOR_ALONG_THE_EDGE(3) =  COUPLED_DECOMPOSITION%INTERFACE_MESH_COORDINATES(node_idx,3) - &
                & COUPLED_DECOMPOSITION%INTERFACE_MESH_COORDINATES(ADJACENCY_NODE,3)
 
-
              edge_length_idx          =  edge_length_idx + 1
 
              EDGE_LENGTHS(edge_length_idx)   = NORM2(VECTOR_ALONG_THE_EDGE)
@@ -1038,7 +1037,7 @@ CONTAINS
 
          !populate boundary nodes
          DO coupled_mesh_node_idx = 1 , COUPLED_MESH%TOPOLOGY(1)%PTR%NODES%NUmberOfNOdes
-           IF(COUPLED_MESH%TOPOLOGY(1)%PTR%NODES%NODES(coupled_mesh_node_idx)%boundaryNode .EQV. .TRUE. ) THEN
+           IF(COUPLED_MESH%TOPOLOGY(1)%PTR%NODES%NODES(coupled_mesh_node_idx)%boundaryNode) THEN
              CALL LIST_ITEM_ADD(BOUNDARY_NODE_LIST, coupled_mesh_node_idx, ERR, ERROR, *999)
            END IF
          END DO ! coupled_mesh_node_idx
@@ -1073,13 +1072,13 @@ CONTAINS
 
            CALL LIST_CREATE_FINISH(ADJNCY_RESTRICTED_TO_INTERFACE_LIST(coupled_mesh_node_idx)%PTR,ERR, ERROR, *999)
 
-           ! to determine the size of COupledMeshNodeAdjancyRestrictedToBoundary
+           ! To determine the size of COupledMeshNodeAdjancyRestrictedToBoundary
            DO surrounding_node_idx = 1, SIZE(COUPLED_MESH%TOPOLOGY(1)%PTR%NODES%NODES(boundary_node_idx)%surroundingNodes)
 
 
              IF(ANY(COUPLED_MESH%TOPOLOGY(1)%PTR%NODES%NODES(boundary_node_idx)%surroundingNodes(surrounding_node_idx)== &
                BOUNDARY_NODES)) THEN
-                       ! Node adjancy containing only the nodes that belong to the boundary.
+               ! Node adjancy containing only the nodes that belong to the boundary.
 
                CALL LIST_ITEM_ADD(ADJNCY_RESTRICTED_TO_INTERFACE_LIST(coupled_mesh_node_idx)%PTR, &
                  & COUPLED_MESH%TOPOLOGY(1)%PTR%NODES%NODES(boundary_node_idx)%surroundingNodes(surrounding_node_idx), &
@@ -1801,7 +1800,7 @@ CONTAINS
 
                   IF(ALLOCATED(COUPLED_MESH_DECOMPOSITION%XADJ)) DEALLOCATE(COUPLED_MESH_DECOMPOSITION%XADJ)
                   ALLOCATE(COUPLED_MESH_DECOMPOSITION%XADJ(0:(COUPLED_MESH_DECOMPOSITION%VTX_DIST(MY_COMPUTATIONAL_NODE+1)-&
-                    & COUPLED_MESH_DECOMPOSITION%VTX_DIST(MY_COMPUTATIONAL_NODE))))
+                    & COUPLED_MESH_DECOMPOSITION%VTX_DIST(MY_COMPUTATIONAL_NODE))), STAT=ERR)
                   IF(ERR/=0) CALL FlagError("Could not allocate XADJ array.",ERR,ERROR,*999)
 
                   COUPLED_MESH_DECOMPOSITION%XADJ(0) = 0
@@ -2166,7 +2165,6 @@ CONTAINS
   END SUBROUTINE COUPLED_DECOMPOSITION_ADD_COUPLED_MESH
 !===================================================================================================================!
 !> The following subroutine initialize members of COUPLED_DECOMPOSITION object.
-
 
   SUBROUTINE COUPLED_DECOMPOSITION_CREATE_START(COUPLED_DECOMPOSITION, &
     & COUPLED_DECOMSPOSITION_USER_NUMBER, ERR, Error, *)
@@ -2543,6 +2541,8 @@ CONTAINS
 
 
 !====================================================================================================
+ !> The following subroutine identifies the vertices to impose the fixed vertex partitioning o.
+
  SUBROUTINE COUPLED_MESH_VERTICES_TO_IMPOSE_FIXED_PARTITIONING(COUPLED_DECOMPOSITION,ERR,ERROR,*)
 
     !Argument variables
@@ -2551,7 +2551,7 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     INTEGER(INTG)                      :: inter_edge_idx, MY_COMPUTATIONAL_NODES, proc_idx, PROC_ID, TOTAL_COMPUTATIONAL_NODES
-    INTEGER(INTG), ALLOCATABLE         :: SUB_DOMAIN_COUNTER(:), TEMP_ARRAY(:,:)
+    INTEGER(INTG), ALLOCATABLE         :: sub_domain_counter(:), TEMP_ARRAY(:,:)
     TYPE(DECOMPOSITION_TYPE), POINTER  :: INTERFACE_MESH_DECOMPOSITION
 
     ENTERS("COUPLED_MESH_VERTICES_TO_IMPOSE_FIXED_PARTITIONING",ERR,ERROR,*999)
@@ -2566,14 +2566,19 @@ CONTAINS
         TOTAL_COMPUTATIONAL_NODES=COMPUTATIONAL_NODES_NUMBER_GET(ERR,ERROR) ! Get rank.
         MY_COMPUTATIONAL_NODES=COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR) ! Get id of the processor
 
-        ALLOCATE(SUB_DOMAIN_COUNTER(TOTAL_COMPUTATIONAL_NODES), STAT=ERR)
-        IF(ERR/=0)   CALL FlagError("SUB_DOMAIN_countercannot be allocated.",ERR,ERROR,*999)
+        ALLOCATE(sub_domain_counter(TOTAL_COMPUTATIONAL_NODES), STAT=ERR)
+        IF(ERR/=0)   CALL FlagError("Sub_domain_countercannot be allocated.",ERR,ERROR,*999)
 
         ALLOCATE(TEMP_ARRAY(SIZE(COUPLED_DECOMPOSITION%INTER_EDGES,1),TOTAL_COMPUTATIONAL_NODES), STAT=ERR) !TEMP_ARRAY(:,PROC_idx) contains all the vertices that are assigned sub-domain PROC_idx
         IF(ERR/=0)   CALL FlagError("TEMP_ARRAY cannot be allocated.",ERR,ERROR,*999)
 
+        ! This subroutine changes the values of COUPLED_DECOMPOSITION%INTER_EDGES such that the new...
+        ! structure of COUPLED_DECOMPOSITION%INTER_EDGES will consist of NUMBER_OF_COMPUTATIONAL_NODES...
+        ! number of columns and COUPLED_DECOMPOSITION%INTER_EDGES(:,subdomain_idx) will consist of all the vertices of .. 
+        ! the coupled mesh graph G_i that are suppose to belong to subdomain_idx.
+  
         TEMP_ARRAY =  0
-        SUB_DOMAIN_counter= 1
+        sub_domain_counter= 1
 
         DO proc_idx = 1, TOTAL_COMPUTATIONAL_NODES
 
@@ -2583,9 +2588,9 @@ CONTAINS
 
             IF(PROC_ID == proc_idx-1) THEN
 
-              TEMP_ARRAY(SUB_DOMAIN_COUNTER(proc_idx),proc_idx)=COUPLED_DECOMPOSITION%INTER_EDGES(inter_edge_idx,2)
+              TEMP_ARRAY(sub_domain_counter(proc_idx),proc_idx)=COUPLED_DECOMPOSITION%INTER_EDGES(inter_edge_idx,2)
 
-              SUB_DOMAIN_COUNTER(proc_idx) = SUB_DOMAIN_COUNTER(proc_idx) + 1
+              sub_domain_counter(proc_idx) = sub_domain_counter(proc_idx) + 1
 
             END IF
 
@@ -2594,11 +2599,12 @@ CONTAINS
         END DO !proc_idx
 
         DEALLOCATE(COUPLED_DECOMPOSITION%INTER_EDGES) ! Store the vertices in COUPLED_DECOMPOSITION%INTER_EDGES data structure ...
-                                                      !... such that !COUPLED_DECOMPOSITION%INTER_EDGES(:,PROC_idx) contains all the vertices that are assigned sub-domain PROC_idx
+                                                      !... such that !COUPLED_DECOMPOSITION%INTER_EDGES(:,PROC_idx) contains all  ... 
+                                                      !.... the vertices that are assigned sub-domain PROC_idx
         ALLOCATE(COUPLED_DECOMPOSITION%INTER_EDGES(SIZE(TEMP_ARRAY,1),TOTAL_COMPUTATIONAL_NODES))
         COUPLED_DECOMPOSITION%INTER_EDGES = TEMP_ARRAY
         DEALLOCATE(TEMP_ARRAY)
-        DEALLOCATE(SUB_DOMAIN_COUNTER)
+        DEALLOCATE(sub_domain_counter)
       ELSE
         CALL FlagError("Interface mesh decomposition is not associated.",ERR,ERROR,*999)
       ENDIF
@@ -2635,55 +2641,60 @@ CONTAINS
         & COUPLED_DECOMPOSITION%COUPLED_FIELDS(COUPLED_DECOMPOSITION%mesh_idx)%PTR%DECOMPOSITION
       IF(ASSOCIATED(COUPLED_MESH_DECOMPOSITION)) THEN
 
-        NUMBER_OF_COMPUTATIONAL_NODES=COMPUTATIONAL_NODES_NUMBER_GET(ERR,ERROR)
-
-        FLAG1=.FALSE.
-        FLAG2=.FALSE.
-
         COUPLED_MESH=>COUPLED_DECOMPOSITION%COUPLED_FIELDS(COUPLED_DECOMPOSITION%mesh_idx)%PTR%DECOMPOSITION%MESH
 
-        ALLOCATE(NEW_TO_OLD_INDEX_MAPPING(COUPLED_MESH%TOPOLOGY(1)%PTR%NODES%numberOfNOdes,2), STAT=ERR)
-        new_vertex_idx = 1
+        IF(ASSOCIATED(COUPLED_MESH)) THEN
 
-        DO old_vertex_idx = 1, COUPLED_MESH%TOPOLOGY(1)%PTR%NODES%numberOfNOdes
+          NUMBER_OF_COMPUTATIONAL_NODES=COMPUTATIONAL_NODES_NUMBER_GET(ERR,ERROR)
 
-          FLAG1= .FALSE.
-          FLAG2= .FALSE.
-          NEW_TO_OLD_INDEX_MAPPING(old_vertex_idx,1) = old_vertex_idx
+          ALLOCATE(NEW_TO_OLD_INDEX_MAPPING(COUPLED_MESH%TOPOLOGY(1)%PTR%NODES%numberOfNOdes,2), STAT=ERR)
+          new_vertex_idx = 1
 
-          DO proc_idx = 1, NUMBER_OF_COMPUTATIONAL_NODES
+          DO old_vertex_idx = 1, COUPLED_MESH%TOPOLOGY(1)%PTR%NODES%numberOfNOdes
 
-            DO inter_edge_idx = 1, SIZE(COUPLED_DECOMPOSITION%INTER_EDGES,1)
+            FLAG1= .FALSE.
+            FLAG2= .FALSE.
+            NEW_TO_OLD_INDEX_MAPPING(old_vertex_idx,1) = old_vertex_idx
+  
+            ! proc_idx represents a sub-domain. 
+            DO proc_idx = 1, NUMBER_OF_COMPUTATIONAL_NODES 
 
-              IF(COUPLED_DECOMPOSITION%INTER_EDGES(inter_edge_idx,proc_idx)==old_vertex_idx) THEN
-                FLAG2= .TRUE.
-                IF(inter_edge_idx==1) THEN
-                  FLAG1=.FALSE.
-                ELSE
-                  FLAG1=.TRUE.
+              DO inter_edge_idx = 1, SIZE(COUPLED_DECOMPOSITION%INTER_EDGES,1)
+
+                IF(COUPLED_DECOMPOSITION%INTER_EDGES(inter_edge_idx,proc_idx)==old_vertex_idx) THEN !If old_vertex_idx is one of the vertices to be merged
+                  FLAG2= .TRUE.
+                  IF(inter_edge_idx==1) THEN ! In this case the Id would of old_vertex_idx  would be the same as the id of the first merged vertex that is supposed to go in ...
+                    FLAG1=.FALSE.  !.... sub-domain proc_idx. 
+                  ELSE
+                    FLAG1=.TRUE.
+                  END IF
+                  EXIT
                 END IF
-                EXIT
-              END IF
+              END DO
+
+              IF(FLAG2) EXIT ! Exit outer loop if old_vertex_idx is detected as one of the vertices to be merged.
+
             END DO
 
-            IF(FLAG2 .EQV. .TRUE.) EXIT
+            IF(.NOT. FLAG1) THEN ! If old_vertex_idx is not the merged vertex then assign old_vertex_idx a new Id.
 
-          END DO
+              NEW_TO_OLD_INDEX_MAPPING(old_vertex_idx,2)=new_vertex_idx
+              new_vertex_idx = new_vertex_idx + 1
 
-          IF(FLAG1 .EQV. .FALSE.) THEN
+            ELSE ! If old_vertex_idx  is suppose to be a merged vertex belonging to sub-domain proc_idx then .... 
+                 ! ... assign old_vertex_idx the Id of the new id of the merged vertex.
+  
+              NEW_TO_OLD_INDEX_MAPPING(old_vertex_idx,2)= &
+                & NEW_TO_OLD_INDEX_MAPPING(COUPLED_DECOMPOSITION%INTER_EDGES(1,proc_idx),2)
 
-            NEW_TO_OLD_INDEX_MAPPING(OLD_VERTEX_idx,2)=new_vertex_idx
-            new_vertex_idx = new_vertex_idx + 1
+            END IF
+          END DO ! OLD_VERTEX_idx
 
-          ELSE
-
-            NEW_TO_OLD_INDEX_MAPPING(old_vertex_idx,2)= &
-              & NEW_TO_OLD_INDEX_MAPPING(COUPLED_DECOMPOSITION%INTER_EDGES(1,proc_idx),2)
-
-          END IF
-        END DO ! OLD_VERTEX_idx
+        ELSE
+          CALL FlagError("Coupled mesh decomposition is not associated.",ERR,ERROR,*999)
+        ENDIF  
       ELSE
-      CALL FlagError("Coupled mesh decomposition is not associated.",ERR,ERROR,*999)
+        CALL FlagError("Coupled mesh decomposition is not associated.",ERR,ERROR,*999)
       ENDIF
     ELSE
       CALL FlagError("Coupled Decomposition is not associated.",ERR,ERROR,*999)
