@@ -59,22 +59,8 @@ MODULE REGION_ROUTINES
   USE NODE_ROUTINES
   USE STRINGS
   USE TYPES
-  USE LISTS
-  USE COMP_ENVIRONMENT
-  USE CMISS_MPI
-  USE MATHS
 
-
-
-
-#ifndef NOMPIMOD
-  USE MPI
-#endif
-
-
-
-
-#include "macros.h"
+#include "macros.h"  
 
   IMPLICIT NONE
 
@@ -87,22 +73,23 @@ MODULE REGION_ROUTINES
   !Module variables
 
   TYPE(REGIONS_TYPE) :: REGIONS
-   !Interfaces
+  
+  !Interfaces
 
   INTERFACE REGION_LABEL_GET
     MODULE PROCEDURE REGION_LABEL_GET_C
     MODULE PROCEDURE REGION_LABEL_GET_VS
   END INTERFACE !REGION_LABEL_GET
-
+  
   INTERFACE REGION_LABEL_SET
     MODULE PROCEDURE REGION_LABEL_SET_C
     MODULE PROCEDURE REGION_LABEL_SET_VS
   END INTERFACE !REGION_LABEL_SET
-
+  
   PUBLIC REGION_COORDINATE_SYSTEM_GET,REGION_COORDINATE_SYSTEM_SET
 
   PUBLIC REGION_CREATE_START,REGION_CREATE_FINISH
-
+  
   PUBLIC REGION_DATA_POINTS_GET
 
   PUBLIC REGION_DESTROY
@@ -110,16 +97,17 @@ MODULE REGION_ROUTINES
   PUBLIC REGION_INITIALISE,REGION_FINALISE
 
   PUBLIC REGION_LABEL_GET,REGION_LABEL_SET
-
+  
   PUBLIC REGION_NODES_GET
-
+  
   PUBLIC REGION_USER_NUMBER_FIND, REGION_USER_NUMBER_TO_REGION
 
   PUBLIC REGIONS_INITIALISE,REGIONS_FINALISE
 
 CONTAINS
 
-  !  ================================================================================================================================
+  !
+  !================================================================================================================================
   !
 
   !>Returns the coordinate system of region. \see OPENCMISS::CMISSRegionCoordinateSystemGet
@@ -131,7 +119,7 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
-
+    
     ENTERS("REGION_COORDINATE_SYSTEM_GET",ERR,ERROR,*999)
 
     IF(ASSOCIATED(REGION)) THEN
@@ -147,13 +135,13 @@ CONTAINS
     ELSE
       CALL FlagError("Region is not associated.",ERR,ERROR,*999)
     ENDIF
-
+    
     EXITS("REGION_COORDINATE_SYSTEM_GET")
     RETURN
 999 ERRORSEXITS("REGION_COORDINATE_SYSTEM_GET",ERR,ERROR)
     RETURN 1
   END SUBROUTINE REGION_COORDINATE_SYSTEM_GET
-
+  
   !
   !================================================================================================================================
   !
@@ -187,13 +175,13 @@ CONTAINS
     ELSE
       CALL FlagError("Region is not associated.",ERR,ERROR,*999)
     ENDIF
-
+    
     EXITS("REGION_COORDINATE_SYSTEM_SET")
     RETURN
 999 ERRORSEXITS("REGION_COORDINATE_SYSTEM_SET",ERR,ERROR)
     RETURN 1
   END SUBROUTINE REGION_COORDINATE_SYSTEM_SET
-
+  
   !
   !================================================================================================================================
   !
@@ -206,7 +194,7 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
-
+     
     ENTERS("REGION_CREATE_FINISH",ERR,ERROR,*999)
 
     IF(ASSOCIATED(REGION)) THEN
@@ -218,18 +206,18 @@ CONTAINS
     ELSE
       CALL FlagError("Region is not associated.",ERR,ERROR,*999)
     ENDIF
-
+    
     IF(DIAGNOSTICS1) THEN
-      CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"Region : ",REGION%USER_NUMBER,ERR,ERROR,*999)
+      CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"Region : ",REGION%USER_NUMBER,ERR,ERROR,*999)      
       CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"  Label = ",REGION%LABEL,ERR,ERROR,*999)
       IF(ASSOCIATED(REGION%PARENT_REGION)) THEN
         CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"  Parent region user number = ",REGION%PARENT_REGION%USER_NUMBER, &
           & ERR,ERROR,*999)
         CALL WRITE_STRING_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"  Parent region label = ",REGION%PARENT_REGION%LABEL, &
-          & ERR,ERROR,*999)
+          & ERR,ERROR,*999)        
       ENDIF
     ENDIF
-
+    
     EXITS("REGION_CREATE_FINISH")
     RETURN
 999 ERRORSEXITS("REGION_CREATE_FINISH",ERR,ERROR)
@@ -239,7 +227,7 @@ CONTAINS
   !
   !================================================================================================================================
   !
-
+  
   !>Starts the creation a new region number USER_NUMBER as a sub region to the given PARENT_REGION, initialises all
   !>variables and inherits the PARENT_REGIONS coordinate system. \see OPENCMISS::CMISSRegionCreateFinish
   !>Default values set for the REGION's attributes are:
@@ -268,7 +256,7 @@ CONTAINS
 
     NULLIFY(NEW_REGION)
     NULLIFY(NEW_SUB_REGIONS)
-
+    
     ENTERS("REGION_CREATE_START",ERR,ERROR,*997)
 
     CALL REGION_USER_NUMBER_FIND(USER_NUMBER,NEW_REGION,ERR,ERROR,*997)
@@ -317,7 +305,7 @@ CONTAINS
         ENDIF
       ENDIF
     ENDIF
-
+    
     EXITS("REGION_CREATE_START")
     RETURN
 999 CALL REGION_FINALISE(REGION,DUMMY_ERR,DUMMY_ERROR,*998)
@@ -339,11 +327,11 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
-
+ 
     ENTERS("REGION_DATA_POINTS_GET",ERR,ERROR,*998)
 
     IF(ASSOCIATED(REGION)) THEN
-      IF(REGION%REGION_FINISHED) THEN
+      IF(REGION%REGION_FINISHED) THEN 
         IF(ASSOCIATED(DATA_POINTS)) THEN
           CALL FlagError("Data points is already associated.",ERR,ERROR,*998)
         ELSE
@@ -356,14 +344,14 @@ CONTAINS
     ELSE
       CALL FlagError("Region is not associated.",ERR,ERROR,*998)
     ENDIF
-
+       
     EXITS("REGION_DATA_POINTS_GET")
     RETURN
 999 NULLIFY(DATA_POINTS)
 998 ERRORSEXITS("REGION_DATA_POINTS_GET",ERR,ERROR)
     RETURN 1
-
-  END SUBROUTINE REGION_DATA_POINTS_GET
+    
+  END SUBROUTINE REGION_DATA_POINTS_GET  
 
 
   !
@@ -392,13 +380,13 @@ CONTAINS
 !!DESTROY_REGION_PTR type routine because we need to change REGION%SUB_REGIONS of the PARENT region and this would violate section
 !!12.4.1.6 of the Fortran standard if the dummy REGION pointer argument was associated with the SUB_REGIONS(x)%PTR actual
 !!argument.
-
+      
       IF(REGION%NUMBER_OF_SUB_REGIONS==0) THEN
         !No more daughter sub regions so delete this instance
         IF(ASSOCIATED(REGION%PARENT_REGION)) THEN
           NULLIFY(NEW_SUB_REGIONS)
           IF(REGION%PARENT_REGION%NUMBER_OF_SUB_REGIONS>1) THEN
-            !If the parent region has more than one sub regions then remove this instance from its sub-regions list
+            !If the parent region has more than one sub regions then remove this instance from its sub-regions list 
             ALLOCATE(NEW_SUB_REGIONS(REGION%PARENT_REGION%NUMBER_OF_SUB_REGIONS-1),STAT=ERR)
             IF(ERR/=0) CALL FlagError("Could not allocate new sub-regions.",ERR,ERROR,*999)
             count=0
@@ -428,7 +416,7 @@ CONTAINS
     ELSE
       CALL FlagError("Region number does not exist.",ERR,ERROR,*999)
     ENDIF
-
+    
     EXITS("REGION_DESTROY_NUMBER")
     RETURN
 999 ERRORSEXITS("REGION_DESTROY_NUMBER",ERR,ERROR)
@@ -448,16 +436,16 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     INTEGER(INTG) :: USER_NUMBER
-
+ 
     ENTERS("REGION_DESTROY",ERR,ERROR,*999)
-
+    
     IF(ASSOCIATED(REGION)) THEN
       USER_NUMBER=REGION%USER_NUMBER
       CALL REGION_DESTROY_NUMBER(USER_NUMBER,ERR,ERROR,*999)
     ELSE
       CALL FlagError("Region is not associated.",ERR,ERROR,*999)
     ENDIF
-
+    
     EXITS("REGION_DESTROY")
     RETURN
 999 ERRORSEXITS("REGION_DESTROY",ERR,ERROR)
@@ -476,9 +464,9 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
-
+   
     ENTERS("REGION_FINALISE",ERR,ERROR,*999)
-
+    
     IF(ASSOCIATED(REGION)) THEN
       REGION%LABEL=""
       CALL CELLML_ENVIRONMENTS_FINALISE(REGION%CELLML_ENVIRONMENTS,ERR,ERROR,*999)
@@ -492,7 +480,7 @@ CONTAINS
       IF(ASSOCIATED(REGION%GENERATED_MESHES)) CALL GENERATED_MESHES_FINALISE(REGION%GENERATED_MESHES,ERR,ERROR,*999)
       DEALLOCATE(REGION)
     ENDIF
-
+    
     EXITS("REGION_FINALISE")
     RETURN
 999 ERRORSEXITS("REGION_FINALISE",ERR,ERROR)
@@ -513,7 +501,7 @@ CONTAINS
     !Local Variables
     INTEGER(INTG) :: DUMMY_ERR
     TYPE(VARYING_STRING) :: DUMMY_ERROR
-
+   
     ENTERS("REGION_INITIALISE",ERR,ERROR,*998)
 
     IF(ASSOCIATED(REGION)) THEN
@@ -543,13 +531,13 @@ CONTAINS
       CALL CELLML_ENVIRONMENTS_INITIALISE(REGION,ERR,ERROR,*999)
       CALL INTERFACES_INITIALISE(REGION,ERR,ERROR,*999)
     ENDIF
-
+    
     EXITS("REGION_INITIALISE")
     RETURN
 999 CALL REGION_FINALISE(REGION,DUMMY_ERR,DUMMY_ERROR,*998)
 998 ERRORSEXITS("REGION_INITIALISE",ERR,ERROR)
     RETURN 1
-
+    
   END SUBROUTINE REGION_INITIALISE
 
   !
@@ -580,12 +568,12 @@ CONTAINS
     ELSE
       CALL FlagError("Region is not associated.",ERR,ERROR,*999)
     ENDIF
-
+    
     EXITS("REGION_LABEL_GET_C")
     RETURN
 999 ERRORSEXITS("REGION_LABEL_GET_C",ERR,ERROR)
     RETURN 1
-
+    
   END SUBROUTINE REGION_LABEL_GET_C
 
    !
@@ -610,12 +598,12 @@ CONTAINS
     ELSE
       CALL FlagError("Region is not associated.",ERR,ERROR,*999)
     ENDIF
-
+    
     EXITS("REGION_LABEL_GET_VS")
     RETURN
 999 ERRORSEXITS("REGION_LABEL_GET_VS",ERR,ERROR)
     RETURN 1
-
+    
   END SUBROUTINE REGION_LABEL_GET_VS
 
   !
@@ -626,7 +614,7 @@ CONTAINS
   SUBROUTINE REGION_LABEL_SET_C(REGION,LABEL,ERR,ERROR,*)
 
     !Argument variables
-    TYPE(REGION_TYPE), POINTER :: REGION !<A pointer to the region to set the label for
+    TYPE(REGION_TYPE), POINTER :: REGION !<A pointer to the region to set the label for 
     CHARACTER(LEN=*), INTENT(IN) :: LABEL !<The label to set
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
@@ -643,7 +631,7 @@ CONTAINS
     ELSE
       CALL FlagError("Region is not associated.",ERR,ERROR,*999)
     ENDIF
-
+    
     EXITS("REGION_LABEL_SET_C")
     RETURN
 999 ERRORSEXITS("REGION_LABEL_SET_C",ERR,ERROR)
@@ -658,7 +646,7 @@ CONTAINS
   SUBROUTINE REGION_LABEL_SET_VS(REGION,LABEL,ERR,ERROR,*)
 
     !Argument variables
-    TYPE(REGION_TYPE), POINTER :: REGION !<A pointer to the region to set the label for
+    TYPE(REGION_TYPE), POINTER :: REGION !<A pointer to the region to set the label for 
     TYPE(VARYING_STRING), INTENT(IN) :: LABEL !<The label to set
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
@@ -675,7 +663,7 @@ CONTAINS
     ELSE
       CALL FlagError("Region is not associated.",ERR,ERROR,*999)
     ENDIF
-
+    
     EXITS("REGION_LABEL_SET_VS")
     RETURN
 999 ERRORSEXITS("REGION_LABEL_SET_VS",ERR,ERROR)
@@ -695,11 +683,11 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
-
+ 
     ENTERS("REGION_NODES_GET",ERR,ERROR,*998)
 
     IF(ASSOCIATED(REGION)) THEN
-      IF(REGION%REGION_FINISHED) THEN
+      IF(REGION%REGION_FINISHED) THEN 
         IF(ASSOCIATED(NODES)) THEN
           CALL FlagError("Nodes is already associated.",ERR,ERROR,*998)
         ELSE
@@ -712,15 +700,15 @@ CONTAINS
     ELSE
       CALL FlagError("Region is not associated.",ERR,ERROR,*998)
     ENDIF
-
+       
     EXITS("REGION_NODES_GET")
     RETURN
 999 NULLIFY(NODES)
 998 ERRORSEXITS("REGION_NODES_GET",ERR,ERROR)
     RETURN 1
-
+    
   END SUBROUTINE REGION_NODES_GET
-
+  
   !
   !================================================================================================================================
   !
@@ -737,7 +725,7 @@ CONTAINS
     !Local Variables
     INTEGER(INTG) :: nr
     TYPE(REGION_TYPE), POINTER :: WORLD_REGION
-
+    
     ENTERS("REGION_USER_NUMBER_FIND",ERR,ERROR,*999)
 
     IF(ASSOCIATED(REGION)) THEN
@@ -752,14 +740,14 @@ CONTAINS
           nr=1
           DO WHILE(nr<=WORLD_REGION%NUMBER_OF_SUB_REGIONS.AND..NOT.ASSOCIATED(REGION))
             CALL REGION_USER_NUMBER_FIND_PTR(USER_NUMBER,WORLD_REGION%SUB_REGIONS(nr)%PTR,REGION,ERR,ERROR,*999)
-            IF(.NOT.ASSOCIATED(REGION)) nr=nr+1
+            IF(.NOT.ASSOCIATED(REGION)) nr=nr+1        
           END DO
         ENDIF
       ELSE
         CALL FlagError("World region is not associated.",ERR,ERROR,*999)
       ENDIF
     ENDIF
-
+  
     EXITS("REGION_USER_NUMBER_FIND")
     RETURN
 999 ERRORSEXITS("REGION_USER_NUMBER_FIND",ERR,ERROR)
@@ -800,7 +788,7 @@ CONTAINS
     ELSE
       CALL FlagError("Start region is not associated",ERR,ERROR,*999)
     ENDIF
-
+    
     EXITS("REGION_USER_NUMBER_FIND_PTR")
     RETURN
 999 ERRORSEXITS("REGION_USER_NUMBER_FIND_PTR",ERR,ERROR)
@@ -830,13 +818,13 @@ CONTAINS
       CALL REGION_FINALISE(REGIONS%WORLD_REGION,ERR,ERROR,*999)
       NULLIFY(REGIONS%WORLD_REGION)
     ENDIF
-
+   
     EXITS("REGIONS_FINALISE")
     RETURN
 999 ERRORSEXITS("REGIONS_FINALISE",ERR,ERROR)
     RETURN 1
   END SUBROUTINE REGIONS_FINALISE
-
+  
   !
   !================================================================================================================================
   !
@@ -852,14 +840,14 @@ CONTAINS
     TYPE(COORDINATE_SYSTEM_TYPE), POINTER :: WORLD_COORDINATE_SYSTEM
 
     NULLIFY(WORLD_COORDINATE_SYSTEM)
-
+    
     ENTERS("REGIONS_INITIALISE",ERR,ERROR,*999)
-
+    
     IF(ASSOCIATED(WORLD_REGION)) THEN
       CALL FlagError("World region is already associated.",ERR,ERROR,*999)
     ELSE
       CALL COORDINATE_SYSTEM_USER_NUMBER_FIND(0,WORLD_COORDINATE_SYSTEM,ERR,ERROR,*999)
-      IF(ASSOCIATED(WORLD_COORDINATE_SYSTEM)) THEN
+      IF(ASSOCIATED(WORLD_COORDINATE_SYSTEM)) THEN        
         CALL REGION_INITIALISE(REGIONS%WORLD_REGION,ERR,ERROR,*999)
         REGIONS%WORLD_REGION%USER_NUMBER=0
         REGIONS%WORLD_REGION%LABEL="World Region"
@@ -871,7 +859,7 @@ CONTAINS
         CALL FlagError("World coordinate system has not been created.",ERR,ERROR,*999)
       ENDIF
     ENDIF
-
+   
     EXITS("REGIONS_INITIALISE")
     RETURN
 999 ERRORSEXITS("REGIONS_INITIALISE",ERR,ERROR)
@@ -883,7 +871,7 @@ CONTAINS
   !
 
   !> Find the region with the given user number, or throw an error if it does not exist.
-  SUBROUTINE REGION_USER_NUMBER_TO_REGION( USER_NUMBER, REGION, ERR, ERROR, * )
+  SUBROUTINE REGION_USER_NUMBER_TO_REGION( USER_NUMBER, REGION, ERR, ERROR, *)
     !Arguments
     INTEGER(INTG), INTENT(IN) :: USER_NUMBER !<The user number of the region to find
     TYPE(REGION_TYPE), POINTER :: REGION !<On return, a pointer to the region with the specified user number.
@@ -909,4 +897,9 @@ CONTAINS
 
   END SUBROUTINE REGION_USER_NUMBER_TO_REGION
 
+  !
+  !================================================================================================================================
+  !
+  
 END MODULE REGION_ROUTINES
+
