@@ -33272,11 +33272,11 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
-    INTEGER(INTG)    :: index_start, index_end, inter_edge_idx, idx, LOC, MY_COMPUTATIONAL_NODE, &
-      & NUMBER_OF_COMPUTATIONAL_NODES, node_idx, NODES_TO_RETAIN, NODES_TO_COLLAPSE, NUMBER_OF_ROWS_TO_DELETE, &
-      & NUMBER_OF_NODES_IN_COUPLED_MESH_GRAPH, NUMBER_OF_SURROUNDING_NODES, proc_idx, surrounding_node_idx, & 
-      & SURROUNDING_NODE
-    INTEGER(INTG), ALLOCATABLE    :: TEMP_ARRAY(:), TEMP_ARRAY_2D(:,:)
+    INTEGER(INTG)    :: index_start, index_end, inter_edge_idx, idx, LOC, & 
+      & MAXIMUM_ADJACECNY_SIZE_OF_NEW_GRAPH,MY_COMPUTATIONAL_NODE, NUMBER_OF_COMPUTATIONAL_NODES, node_idx, & 
+      & NODES_TO_RETAIN, NODES_TO_COLLAPSE, NUMBER_OF_ROWS_TO_DELETE, NUMBER_OF_NODES_IN_COUPLED_MESH_GRAPH, &
+      & NUMBER_OF_SURROUNDING_NODES, proc_idx, surrounding_node_idx, SURROUNDING_NODE
+    INTEGER(INTG), ALLOCATABLE    :: ADJACECNY_SIZE_OF_THE_GRAPH(:),TEMP_ARRAY(:), TEMP_ARRAY_2D(:,:)
     TYPE(MESH_TYPE), POINTER      :: COUPLED_MESH
 
     ENTERS("COUPLED_DECOMPOSITION_NEW_TO_OLD_VERTEX_MAPPING",ERR,ERROR,*999)
@@ -33286,6 +33286,7 @@ CONTAINS
       IF(ASSOCIATED(COUPLED_MESH)) THEN
         NUMBER_OF_COMPUTATIONAL_NODES=COMPUTATIONAL_NODES_NUMBER_GET(ERR,ERROR)
         MY_COMPUTATIONAL_NODE=COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR)
+
 
         ! At first allocate the COUPLED_DECOMPOSITION%MERGED_GRAPH_NODES to size equal to number of nodes in the original coupld mesh graph G_i. 
         NUMBER_OF_NODES_IN_COUPLED_MESH_GRAPH = SIZE(COUPLED_MESH%TOPOLOGY(1)%PTR%NODES%NODES,1) 
@@ -33343,29 +33344,47 @@ CONTAINS
           COUPLED_DECOMPOSITION%MERGED_GRAPH_NODES(NODES_TO_RETAIN)%surroundingNOdes = PACK(TEMP_ARRAY, TEMP_ARRAY/=0)
 
           DEALLOCATE(TEMP_ARRAY)
-
+           
         END DO !proc_idx
-        ! In step 2, try to nullify nodes that are supposed to be merged.
-        DO inter_edge_idx = 2 , SIZE(COUPLED_DECOMPOSITION%INTER_EDGES,1)
 
+
+        ! In step 2, try to nullify nodes that are supposed to be merged.
+
+        DO inter_edge_idx = 2 , SIZE(COUPLED_DECOMPOSITION%INTER_EDGES,1)
+          
           DO proc_idx = 1, NUMBER_OF_COMPUTATIONAL_NODES
 
             node_idx = COUPLED_DECOMPOSITION%INTER_EDGES(inter_edge_idx,proc_idx)
             IF(node_idx/=0) THEN
               COUPLED_DECOMPOSITION%MERGED_GRAPH_NODES(node_idx)%surroundingNOdes = -1
+
             END IF
+
+
           END DO !proc_idx
         END DO !inter_edge_idx
 
+        ALLOCATE(ADJACECNY_SIZE_OF_THE_GRAPH(SIZE(COUPLED_DECOMPOSITION%MERGED_GRAPH_NODES)), STAT=ERR)
+        IF(ERR/=0) CALL FlagError("ADJACECNY_SIZE_OF_THE_GRAPH cannot be allocated.",ERR,ERROR,*999)
+
+        DO node_idx = 1, SIZE(COUPLED_DECOMPOSITION%MERGED_GRAPH_NODES,1)
+
+          ADJACECNY_SIZE_OF_THE_GRAPH(node_idx)=SIZE(COUPLED_DECOMPOSITION%MERGED_GRAPH_NODES(node_idx)%surroundingNOdes,1)
+
+        END DO ! node_idx
+
+        MAXIMUM_ADJACECNY_SIZE_OF_NEW_GRAPH = MAXVAL(ADJACECNY_SIZE_OF_THE_GRAPH) 
+      
         NUMBER_OF_ROWS_TO_DELETE = 0
 
         DO node_idx = 1, SIZE(COUPLED_DECOMPOSITION%MERGED_GRAPH_NODES,1)
 
           IF(SIZE(COUPLED_DECOMPOSITION%MERGED_GRAPH_NODES(node_idx)%surroundingNOdes) > 0) THEN
-            IF(COUPLED_DECOMPOSITION%MERGED_GRAPH_NODES(node_idx)%surroundingNOdes(1) == -1) THEN
+            IF(COUPLED_DECOMPOSITION%MERGED_GRAPH_NODES(node_idx)%surroundingNOdes(1) == -1)  THEN
 
-              NUMBER_OF_ROWS_TO_DELETE = NUMBER_OF_ROWS_TO_DELETE + 1     !No. of rows less in the new coupled mesh graph G_{i,merged} compared to the orginal coupled mesh graph G_i.
-
+              NUMBER_OF_ROWS_TO_DELETE = NUMBER_OF_ROWS_TO_DELETE + 1     !Number of rows to delete refers to the vertices of coupeld mesh grph G_i that are to be merged to obtain the ...
+                                                                          ! ... new coupled mesh graph G_{i,merged}. In other words number of vertices in G_{i,merged} would be  ... 
+                                                                          ! ..."NUMBER_OF_ROWS_TO_DELETE" less than the nodes of G_i.  
             END IF
           END IF
 
@@ -33373,10 +33392,10 @@ CONTAINS
 
         IF(ALLOCATED(TEMP_ARRAY_2D)) DEALLOCATE(TEMP_ARRAY_2D)
         ALLOCATE(TEMP_ARRAY_2D(SIZE(COUPLED_DECOMPOSITION%MERGED_GRAPH_NODES,1)-NUMBER_OF_ROWS_TO_DELETE, &
-          & SIZE(COUPLED_DECOMPOSITION%MERGED_GRAPH_NODES,1)*10), STAT=ERR)
+          & MAXIMUM_ADJACECNY_SIZE_OF_NEW_GRAPH), STAT=ERR) 
         IF(ERR/=0) CALL FlagError("Unable to allocate TEMP_ARRAY_2D array.",ERR,ERROR,*999)
 
-        TEMP_ARRAY_2D = 0 ! THis array temporarily stores the new node adjacencies.
+        TEMP_ARRAY_2D = 0 ! This array temporarily stores the new node adjacencies.
         idx = 1
 
         DO node_idx = 1, SIZE(COUPLED_DECOMPOSITION%MERGED_GRAPH_NODES,1)
