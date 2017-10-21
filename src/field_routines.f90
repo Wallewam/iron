@@ -31716,14 +31716,12 @@ CONTAINS
            ! To determine the size of COupledMeshNodeAdjancyRestrictedToBoundary
            DO surrounding_node_idx = 1, SIZE(COUPLED_MESH%TOPOLOGY(1)%PTR%NODES%NODES(boundary_node_idx)%surroundingNodes)
 
-
              IF(ANY(COUPLED_MESH%TOPOLOGY(1)%PTR%NODES%NODES(boundary_node_idx)%surroundingNodes(surrounding_node_idx)== &
-               BOUNDARY_NODES)) THEN
+               BOUNDARY_NODES)) THEN 
                ! Node adjancy containing only the nodes that belong to the boundary.
-
                CALL LIST_ITEM_ADD(ADJNCY_RESTRICTED_TO_INTERFACE_LIST(coupled_mesh_node_idx)%PTR, &
                  & COUPLED_MESH%TOPOLOGY(1)%PTR%NODES%NODES(boundary_node_idx)%surroundingNodes(surrounding_node_idx), &
-                   & ERR,ERROR,*999)
+                 & ERR,ERROR,*999)
 
              END  IF  !  IF( any(CoupledMesh%adjancy(COupledMesh%BOundaryNodes ...
 
@@ -31740,14 +31738,13 @@ CONTAINS
 
            ADJNCY_RESTRICTED_TO_INTERFACE( &
              & coupled_mesh_node_idx,1:NUMBER_ADJNCY_RESTRICTED_TO_INTERFACE(coupled_mesh_node_idx)) = &
-               & LIST_OF_NODES(1:NUMBER_OF_NODES)
+             & LIST_OF_NODES(1:NUMBER_OF_NODES)
            DEALLOCATE(LIST_OF_NODES)
 
          END DO !COUPLED_mesh_idx
 
-         ALLOCATE(DISTANCE(INTERFACE_MESH%TOPOLOGY(1)%PTR%NODES%NUmberOfNOdes), STAT=ERR)
-         IF(ERR /= 0) CALL FlagError(" Unable to allocate DISTANCE array.",ERR,ERROR,*999)
-
+         ALLOCATE(DISTANCE(INTERFACE_MESH%TOPOLOGY(1)%PTR%NODES%NumberOfNOdes), STAT=ERR)
+         IF(ERR/=0) CALL FlagError(" Unable to allocate DISTANCE array.",ERR,ERROR,*999)
 
          DO coupled_mesh_node_idx = 1, NUMBER_OF_BOUNDARY_NODES
 
@@ -31768,51 +31765,73 @@ CONTAINS
 
              INTERFACE_MESH_NODE_TO_ADD= INT(SQRT(REAL(DOT_PRODUCT(&
                & MINLOC(PACK(DISTANCE,DISTANCE >= -1E-5)-MINVAL(PACK(DISTANCE,DISTANCE >= -1E-5))),&
-                 & MINLOC(PACK(DISTANCE,DISTANCE >= -1E-5)-MINVAL(PACK(DISTANCE,DISTANCE >= -1E-5)))))),INTG)
+               & MINLOC(PACK(DISTANCE,DISTANCE >= -1E-5)-MINVAL(PACK(DISTANCE,DISTANCE >= -1E-5)))))),INTG)
+             ! From here onward normal angles are calcuated on interface mesh node "INTERFACE_MESH_NODE_TO_ADD" ... 
+             ! and the coupled mesh node "boundary_node_idx" but ... 
+             ! ...the feature right now is not robust enough for mesh 3D mesh with quadratic or cubic interolation order...
+             ! Therefore in order to build robust inter edges with 3D mesh with quadratic or cubic interolation order...
+             ! ... the interface mesh graph should be atleast 3 times more refined than the coupled mesh graph
+             IF(COUPLED_MESH%NUMBER_OF_DIMENSIONS == 3 .AND. & 
+               & (COUPLED_MESH%TOPOLOGY(1)%PTR%ELEMENTS%ELEMENTS(1)%BASIS% &
+               & INTERPOLATION_XI(1)==BASIS_QUADRATIC_LAGRANGE_INTERPOLATION .OR. & 
+               & COUPLED_MESH%TOPOLOGY(1)%PTR%ELEMENTS%ELEMENTS(1)%BASIS% &
+               & INTERPOLATION_XI(1)==BASIS_QUADRATIC_SIMPLEX_INTERPOLATION .OR. & 
+               & INTERFACE_MESH%TOPOLOGY(1)%PTR%ELEMENTS%ELEMENTS(1)%BASIS% &
+               & INTERPOLATION_XI(1)==BASIS_QUADRATIC_LAGRANGE_INTERPOLATION .OR. & 
+               & INTERFACE_MESH%TOPOLOGY(1)%PTR%ELEMENTS%ELEMENTS(1)%BASIS% &
+               & INTERPOLATION_XI(1)==BASIS_QUADRATIC_SIMPLEX_INTERPOLATION)) THEN 
 
-             ! Calculate normal at vertex coupled_mesh_node_idx.
-             CALL COUPLED_MESH_CALCULATE_NORMAL(COUPLED_DECOMPOSITION,  &
-               & boundary_node_idx, NORMAL_VECTOR_COUPLED_MESH, ERR, ERROR, *999)
+               CALL LIST_ITEM_ADD(INTER_EDGE_LIST_INTERFACE_MESH,INTERFACE_MESH_NODE_TO_ADD, ERR, ERROR, *999)
 
-             ! Calculate normal at vertex interface_mesh_node_idx.
-             CALL INTERFACE_MESH_CALCULATE_NORMAL(COUPLED_DECOMPOSITION,  &
-               & INTERFACE_MESH_NODE_TO_ADD, NORMAL_VECTOR_INTERFACE_MESH, ERR, ERROR, *999)
+               CALL LIST_ITEM_ADD(INTER_EDGE_LIST_COUPLED_MESH,boundary_node_idx, ERR, ERROR, *999)
 
-                      DO coupled_mesh_normal_vector_idx = 1, SIZE(NORMAL_VECTOR_COUPLED_MESH,2)
-               DO interface_mesh_normal_vector_idx = 1, SIZE(NORMAL_VECTOR_INTERFACE_MESH,2)
+             ELSE ! calculate normals for 2D mesh with linear , quadratic and cubic interpolation order and 3D mesh with ...  
+                  ! .... linear interpolation order. 
 
-                ! COS(\Theeta)  =  (U.V)/( |U|.|V|)
-                 DIFFERENCE_IN_ANGLE =  ACOS(DOT_PRODUCT(NORMAL_VECTOR_COUPLED_MESH(:,coupled_mesh_normal_vector_idx), &
-                   & NORMAL_VECTOR_INTERFACE_MESH(:,interface_mesh_normal_vector_idx))/ &
+               ! Calculate normal at vertex coupled_mesh_node_idx.
+               CALL COUPLED_MESH_CALCULATE_NORMAL(COUPLED_DECOMPOSITION,  &
+                 & boundary_node_idx, NORMAL_VECTOR_COUPLED_MESH, ERR, ERROR, *999)
+
+               ! Calculate normal at vertex interface_mesh_node_idx.
+               CALL INTERFACE_MESH_CALCULATE_NORMAL(COUPLED_DECOMPOSITION,  &
+                 & INTERFACE_MESH_NODE_TO_ADD, NORMAL_VECTOR_INTERFACE_MESH, ERR, ERROR, *999)
+
+               DO coupled_mesh_normal_vector_idx = 1, SIZE(NORMAL_VECTOR_COUPLED_MESH,2)
+                 DO interface_mesh_normal_vector_idx = 1, SIZE(NORMAL_VECTOR_INTERFACE_MESH,2)
+
+
+                  ! COS(\Theeta)  =  (U.V)/( |U|.|V|)
+                   DIFFERENCE_IN_ANGLE =  ACOS(DOT_PRODUCT(NORMAL_VECTOR_COUPLED_MESH(:,coupled_mesh_normal_vector_idx), &
+                     & NORMAL_VECTOR_INTERFACE_MESH(:,interface_mesh_normal_vector_idx))/ &
                      & ((NORM2(NORMAL_VECTOR_COUPLED_MESH(:,coupled_mesh_normal_vector_idx))* &
-                       & NORM2(NORMAL_VECTOR_INTERFACE_MESH(:,interface_mesh_normal_vector_idx)))))
+                     & NORM2(NORMAL_VECTOR_INTERFACE_MESH(:,interface_mesh_normal_vector_idx)))))
 
-                 DIFFERENCE_IN_ANGLE = DIFFERENCE_IN_ANGLE*180/3.14159 ! Calculating the difference of angle in degrees
+                   DIFFERENCE_IN_ANGLE = DIFFERENCE_IN_ANGLE*180/3.14159 ! Calculating the difference of angle in degrees
+                 ! If the difference of angle between the normal at vertex of the interface mesh and the vertex at the coupled...
+                 ! ... mesh if 5 degrees then, the vertices exist on the same interedge.
 
-                 IF((DIFFERENCE_IN_ANGLE .GE. 0 .AND. DIFFERENCE_IN_ANGLE .LE. 5.0001) .OR. &
-                   & (DIFFERENCE_IN_ANGLE .GE. 174.9999 .AND. DIFFERENCE_IN_ANGLE .LE. 181.0001)) THEN !With tolerance of 1E-4
+                   IF((DIFFERENCE_IN_ANGLE .GE. 0. .AND. DIFFERENCE_IN_ANGLE .LE. 5.0001) .OR. &
+                     & (DIFFERENCE_IN_ANGLE .GE. 174.9999 .AND. DIFFERENCE_IN_ANGLE .LE. 181.0001)) THEN !With tolerance of 1E-4
 
+                     CALL LIST_ITEM_ADD(INTER_EDGE_LIST_INTERFACE_MESH,INTERFACE_MESH_NODE_TO_ADD, ERR, ERROR, *999)
 
-                   CALL LIST_ITEM_ADD(INTER_EDGE_LIST_INTERFACE_MESH,INTERFACE_MESH_NODE_TO_ADD, ERR, ERROR, *999)
+                     CALL LIST_ITEM_ADD(INTER_EDGE_LIST_COUPLED_MESH,boundary_node_idx, ERR, ERROR, *999)
 
-                   CALL LIST_ITEM_ADD(INTER_EDGE_LIST_COUPLED_MESH,boundary_node_idx, ERR, ERROR, *999)
+                     EXIT
 
-                   EXIT
+                   END IF
 
-                 END IF
-
-               END DO !interface_mesh_normal_vector_idx
+                 END DO !interface_mesh_normal_vector_idx
 
                  IF((DIFFERENCE_IN_ANGLE .GE. 0 .AND. DIFFERENCE_IN_ANGLE .LE. 5.0001) .OR. &
                    & (DIFFERENCE_IN_ANGLE .GE. 174.9999 .AND. DIFFERENCE_IN_ANGLE .LE. 181.0001)) EXIT !With tolerance of 1E-4
 
-             END DO ! coupled_mesh_normal_vector_idx
-
+               END DO ! coupled_mesh_normal_vector_idx
+             END IF
              IF(ALLOCATED(NORMAL_VECTOR_COUPLED_MESH)) DEALLOCATE(NORMAL_VECTOR_COUPLED_MESH)
              IF(ALLOCATED(NORMAL_VECTOR_INTERFACE_MESH)) DEALLOCATE(NORMAL_VECTOR_INTERFACE_MESH)
 
            END IF
-
 
          END DO !coupled_mesh_node_idx
 
@@ -31838,7 +31857,7 @@ CONTAINS
 
 
          END DO  !inter_edge_idx
-
+         ! Deallocate local data structures
          IF(ALLOCATED(DISTANCE)) DEALLOCATE(DISTANCE)
          IF(ALLOCATED(ADJNCY_RESTRICTED_TO_INTERFACE)) DEALLOCATE(ADJNCY_RESTRICTED_TO_INTERFACE)
          IF(ALLOCATED(BOUNDARY_NODES)) DEALLOCATE(BOUNDARY_NODES)
@@ -31870,17 +31889,18 @@ CONTAINS
 
     !Argument variables
     TYPE(COUPLED_DECOMPOSITION_TYPE), POINTER ,INTENT(INOUT) :: COUPLED_DECOMPOSITION !< Coupled mesh decomposition type object.
-    INTEGER(INTG), INTENT(OUT)                               :: ERR !<The error code.
+    INTEGER(INTG), INTENT(IN)                                :: NODE_ID !<The global node id to find normal at.
     TYPE(VARYING_STRING), INTENT(OUT)                        :: ERROR !<The error string.
-    INTEGER(INTG)                                            :: NODE_ID !<The global node id to find normal at.
-    REAL(RP), ALLOCATABLE                                    :: NORMAL_VECTOR(:,:) !< 2D array containing all possible normal vectors at NODE_ID.
+    REAL(RP), ALLOCATABLE ,INTENT(OUT)                       :: NORMAL_VECTOR(:,:) !< 2D array containing all possible normal vectors at NODE_ID.
+    INTEGER(INTG), INTENT(OUT)                               :: ERR !<The error code.
     !Local variables
-    INTEGER(INTG)  :: coordinate_idx, counter, MY_COMPUTATIONAL_NODE, node_idx, normal_vector_idx, &
+    INTEGER(INTG)  :: element_idx, coordinate_idx, counter, MY_COMPUTATIONAL_NODE, node_idx, normal_vector_idx, &
       & normal_vector_idx_1,normal_vector_idx_2, NUMBER_OF_SURROUNDING_NODES, &
       & surrouding_node, surrounding_node_idx, vector_idx
     REAL(RP), ALLOCATABLE                                    :: TANGENT_VECTOR(:,:)
     TYPE(MESH_TYPE), POINTER                                 :: COUPLED_MESH
-                                                                ! In the given mesh, for vertex_1, the tangent and normal vectors are calculated as follow:
+    LOGICAL                                                  :: NODE_DETECTED, PARALLEL_VECTORS
+! In the given mesh, for vertex_1, the tangent and normal vectors are calculated as follow:
 
                                                                 !                              ^
                                                                 !                              |NORMAL_VECTOR(1,:)
@@ -31902,7 +31922,7 @@ CONTAINS
 
                                                                 ! Description of the labels:
                                                                 ! TANGENT_VECTOR(1,:) is a vector drawn between vertex 1 and vertex 2.
-                                                                ! TANGENT_VECTOR(2,:) is a vector drawn between vertex 2 and vertex 3.
+                                                                ! TANGENT_VECTOR(2,:) is a vector drawn between vertex 1 and vertex 3.
                                                                 ! TANGENT_VECTOR(3,:) is a vector which is normalized average of  TANGENT_VECTOR(1,:) and TANGENT_VECTOR(2,:).
                                                                 ! NORMAL_VECTOR(1,:) is perpendicular to TANGENT_VECTOR(1,:).
                                                                 ! NORMAL_VECTOR(2,:) is perpendicular to TANGENT_VECTOR(2,:).
@@ -31922,27 +31942,24 @@ CONTAINS
 
           surrouding_node = COUPLED_MESH%TOPOLOGY(1)%PTR%NODES%NODES(NODE_ID)%surroundingNodes(node_idx)
           IF(COUPLED_MESH%TOPOLOGY(1)%PTR%NODES%NODES(surrouding_node)%BoundaryNode) &
-            & NUMBER_OF_SURROUNDING_NODES = NUMBER_OF_SURROUNDING_NODES +1
+            & NUMBER_OF_SURROUNDING_NODES = NUMBER_OF_SURROUNDING_NODES + 1
 
         END DO
 
         ALLOCATE(TANGENT_VECTOR(3,NUMBER_OF_SURROUNDING_NODES), STAT=ERR)
         IF(ERR/=0) CALL FlagError("Could not allocate TANGENT_VECTOR array.",ERR,ERROR,*999)
         counter=  0
-        DO surrounding_node_idx = 1, SIZE(COUPLED_MESH%TOPOLOGY(1)%PTR%NODES%NODES(NODE_ID)%surroundingNodes)
 
+        DO surrounding_node_idx = 1, SIZE(COUPLED_MESH%TOPOLOGY(1)%PTR%NODES%NODES(NODE_ID)%surroundingNodes)
           surrouding_node = COUPLED_MESH%TOPOLOGY(1)%PTR%NODES%NODES(NODE_ID)%surroundingNodes(surrounding_node_idx)
           IF(COUPLED_MESH%TOPOLOGY(1)%PTR%NODES%NODES(surrouding_node)%BoundaryNode) THEN
             counter= counter+ 1
             TANGENT_VECTOR(:,counter)  = COUPLED_DECOMPOSITION%COUPLED_MESH_COORDINATES(surrouding_node,:) - &
-              &  COUPLED_DECOMPOSITION%COUPLED_MESH_COORDINATES(NODE_ID,:)
-
+              & COUPLED_DECOMPOSITION%COUPLED_MESH_COORDINATES(NODE_ID,:)
           END IF
         END DO ! surrounding_node_idx
 
-
         IF(COUPLED_MESH%NUMBER_OF_DIMENSIONS == 2) THEN
-
 
           DO coordinate_idx = 1, 3
             counter= 0
@@ -31965,20 +31982,20 @@ CONTAINS
 
           DO normal_vector_idx = 1, NUMBER_OF_SURROUNDING_NODES
 
-            IF(coordinate_idx == 1) THEN
+            IF(coordinate_idx == 1) THEN ! Mesh lies of plane YZ
 
               NORMAL_VECTOR(1,normal_vector_idx) = 0
               NORMAL_VECTOR(2,normal_vector_idx) = TANGENT_VECTOR(3, normal_vector_idx)
               NORMAL_VECTOR(3,normal_vector_idx) = -TANGENT_VECTOR(2, normal_vector_idx)
 
-            ELSE IF(coordinate_idx == 2) THEN
+            ELSE IF(coordinate_idx == 2) THEN ! Mesh lies of plane XZ
 
               NORMAL_VECTOR(1,normal_vector_idx) = TANGENT_VECTOR(3, normal_vector_idx)
               NORMAL_VECTOR(2,normal_vector_idx) = 0
               NORMAL_VECTOR(3,normal_vector_idx) = -TANGENT_VECTOR(1, normal_vector_idx)
 
 
-            ELSE
+            ELSE ! Mesh lies of plane XY
 
               NORMAL_VECTOR(1,normal_vector_idx) = TANGENT_VECTOR(2, normal_vector_idx)
               NORMAL_VECTOR(2,normal_vector_idx) = -TANGENT_VECTOR(1, normal_vector_idx)
@@ -31987,22 +32004,22 @@ CONTAINS
             END IF
 
             NORMAL_VECTOR(:,normal_vector_idx) = NORMAL_VECTOR(:,normal_vector_idx)/ &
-              & NORM2(NORMAL_VECTOR(:,normal_vector_idx))
+              & NORM2(NORMAL_VECTOR(:,normal_vector_idx))   !Normalizing the vector
 
           END DO   ! normal_vector_idx
 
           DO normal_vector_idx = 1, NUMBER_OF_SURROUNDING_NODES
 
             NORMAL_VECTOR(:,NUMBER_OF_SURROUNDING_NODES+1) = NORMAL_VECTOR(:,NUMBER_OF_SURROUNDING_NODES+1) + &
-              & NORMAL_VECTOR(:,normal_vector_idx)
+              & NORMAL_VECTOR(:,normal_vector_idx) !Vector which is average normal of all others that are estimated on node_id
 
           END DO
 
             NORMAL_VECTOR(:,NUMBER_OF_SURROUNDING_NODES+1) = NORMAL_VECTOR(:,NUMBER_OF_SURROUNDING_NODES+1)/ &   ! Averaging out the vector
-              & NUMBER_OF_SURROUNDING_NODES
+              & NUMBER_OF_SURROUNDING_NODES ! Averaging the vector.
 
             NORMAL_VECTOR(:,NUMBER_OF_SURROUNDING_NODES+1) = NORMAL_VECTOR(:,NUMBER_OF_SURROUNDING_NODES+1)/ &
-              & NORM2(NORMAL_VECTOR(:,NUMBER_OF_SURROUNDING_NODES+1))
+              & NORM2(NORMAL_VECTOR(:,NUMBER_OF_SURROUNDING_NODES+1)) ! Normalizing the vector
 
         ELSE IF(COUPLED_MESH%NUMBER_OF_DIMENSIONS == 3) THEN
 
@@ -32013,7 +32030,7 @@ CONTAINS
 
           NORMAL_VECTOR = 0
           vector_idx = 0
-
+          ! Calculating normal vectors using cross product of tangent vectors
           DO normal_vector_idx_1 = 1, NUMBER_OF_SURROUNDING_NODES-1
             DO normal_vector_idx_2 = normal_vector_idx_1+1, NUMBER_OF_SURROUNDING_NODES
              vector_idx = vector_idx + 1
@@ -32071,10 +32088,10 @@ CONTAINS
 
     !Argument variables
     TYPE(COUPLED_DECOMPOSITION_TYPE), POINTER ,INTENT(INOUT) :: COUPLED_DECOMPOSITION !< Coupled mesh decomposition type object.
+    INTEGER(INTG), INTENT(IN)                                :: NODE_ID !<The global node id to find normal at.
+    REAL(RP), ALLOCATABLE, INTENT(OUT)                       :: NORMAL_VECTOR(:,:) !< 2D array containing all possible normal vectors at NODE_ID.
     INTEGER(INTG), INTENT(OUT)                               :: ERR !<The error code.
     TYPE(VARYING_STRING), INTENT(OUT)                        :: ERROR !<The error string.
-    INTEGER(INTG)                                            :: NODE_ID !<The global node id to find normal at.
-    REAL(RP), ALLOCATABLE                                    :: NORMAL_VECTOR(:,:) !< 2D array containing all possible normal vectors at NODE_ID.
 
                                                                 ! In the given mesh, for vertex_1, the tangent and normal vectors are calculated as follow:
 
@@ -32098,20 +32115,19 @@ CONTAINS
 
                                                                 ! Description of the labels:
                                                                 ! TANGENT_VECTOR(1,:) is a vector drawn between vertex 1 and vertex 2
-                                                                ! TANGENT_VECTOR(2,:) is a vector drawn between vertex 2 and vertex 3
+                                                                ! TANGENT_VECTOR(2,:) is a vector drawn between vertex 1 and vertex 3
                                                                 ! TANGENT_VECTOR(3,:) is a vector which is normalized average of  TANGENT_VECTOR(1,:) and TANGENT_VECTOR(2,:)
                                                                 ! NORMAL_VECTOR(1,:) is perpendicular to TANGENT_VECTOR(1,:)
                                                                 ! NORMAL_VECTOR(2,:) is perpendicular to TANGENT_VECTOR(2,:)
                                                                 ! NORMAL_VECTOR(3,:) is perpendicular to TANGENT_VECTOR(3,:)
                                                                                                                                     
     !Local variables
-    INTEGER(INTG)  :: coordinate_idx, counter, MY_COMPUTATIONAL_NODE, node_idx, normal_vector_idx, &
+    INTEGER(INTG)  :: coordinate_idx, counter, element_idx, MY_COMPUTATIONAL_NODE, node_idx, normal_vector_idx, &
       & normal_vector_idx_1,normal_vector_idx_2, NUMBER_OF_SURROUNDING_NODES, &
       & surrouding_node, surrounding_node_idx, vector_idx
-    REAL(RP), ALLOCATABLE                                    :: TANGENT_VECTOR(:,:)!                          TANGENT_VECTOR(1,:)         TANGENT_VECTOR(2,:)
-                                                                                   ! For instance 1D mesh: o-<--------------------o------------------------->-o
-    TYPE(MESH_TYPE), POINTER                                 :: INTERFACE_MESH, COUPLED_MESH              !2                      1                           3 
-
+    REAL(RP), ALLOCATABLE                                    :: TANGENT_VECTOR(:,:)
+    TYPE(MESH_TYPE), POINTER                                 :: INTERFACE_MESH, COUPLED_MESH
+    LOGICAL                                                  :: NODE_DETECTED, PARALLEL_VECTORS
 
     ENTERS(" INTERFACE_MESH_CALCULATE_NORMAL",ERR,ERROR,*999)
     IF(ASSOCIATED(COUPLED_DECOMPOSITION)) THEN
@@ -32127,21 +32143,19 @@ CONTAINS
 
         ALLOCATE(TANGENT_VECTOR(3,NUMBER_OF_SURROUNDING_NODES), STAT=ERR)
         IF(ERR/=0) CALL FlagError("Could not allocate TANGENT_VECTOR array.",ERR,ERROR,*999)
-
+       
         DO surrounding_node_idx = 1, NUMBER_OF_SURROUNDING_NODES
-
           surrouding_node = INTERFACE_MESH%TOPOLOGY(1)%PTR%NODES%NODES(NODE_ID)%surroundingNodes(surrounding_node_idx)
-
+          ! Calculating the tangent vector between surrounding_node_idx and surrouding_node.  
           TANGENT_VECTOR(:,surrounding_node_idx)=COUPLED_DECOMPOSITION%INTERFACE_MESH_COORDINATES(surrouding_node,:)-&
-            &  COUPLED_DECOMPOSITION%INTERFACE_MESH_COORDINATES(NODE_ID,:)
+            &  COUPLED_DECOMPOSITION%INTERFACE_MESH_COORDINATES(NODE_ID,:)  
 
         END DO ! surrounding_node_idx
 
-
         IF(COUPLED_MESH%NUMBER_OF_DIMENSIONS == 2) THEN
 
-            ! The following do-loop figures out which one of the coordinates in the coupled mesh is all zero.
-            ! In other words, it will help algorithm to judge which plane the 2D mesh lie on.
+          ! The following do-loop figures out which one of the coordinates in the coupled mesh is all zero.
+          ! In other words, it will help algorithm to judge which plane the 2D mesh lie on.
           DO coordinate_idx = 1, 3
             counter= 0
             DO node_idx = 1, SIZE(COUPLED_DECOMPOSITION%COUPLED_MESH_COORDINATES,1)
@@ -32150,7 +32164,7 @@ CONTAINS
                 & counter= counter+ 1
 
             END DO !node_idx
-            IF(counter== SIZE(COUPLED_DECOMPOSITION%COUPLED_MESH_COORDINATES,1)) EXIT
+            IF(counter== SIZE(COUPLED_DECOMPOSITION%COUPLED_MESH_COORDINATES,1)) EXIT ! i.e. Exit if all cooridnates are 0.
           END DO !coordinate_idx
 
           IF(ALLOCATED(NORMAL_VECTOR)) DEALLOCATE(NORMAL_VECTOR)
@@ -32287,8 +32301,8 @@ CONTAINS
 
     IF(ASSOCIATED(COUPLED_DECOMPOSITION)) THEN
 
-        COUPLED_MESH=>&
-          COUPLED_DECOMPOSITION%COUPLED_FIELDS(COUPLED_DECOMPOSITION%mesh_idx)%PTR%DECOMPOSITION%MESH
+      COUPLED_MESH=> &
+        & COUPLED_DECOMPOSITION%COUPLED_FIELDS(COUPLED_DECOMPOSITION%mesh_idx)%PTR%DECOMPOSITION%MESH
       IF(ASSOCIATED(COUPLED_MESH)) THEN
 
         FIELD_COUPLED_MESH=>COUPLED_DECOMPOSITION%COUPLED_FIELDS(COUPLED_DECOMPOSITION%mesh_idx)%PTR
@@ -32918,7 +32932,7 @@ CONTAINS
            MY_COMPUTATIONAL_NODE=COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR)
            NUMBER_OF_FIELD_COMPONENTS = GEOMETRIC_FIELD%VARIABLES(1)%NUMBER_OF_COMPONENTS !Number of components of a geometric field.
            ALLOCATE(MESH_COORDINATES(MESH%TOPOLOGY(1)%PTR%NODES%NUmberOfNOdes,3), STAT=ERR)
-           IF(ERR /= 0)   CALL FlagError(" Cannot allocate MESH_COORDINATES.",ERR,ERROR,*999)
+           IF(ERR/=0)   CALL FlagError(" Cannot allocate MESH_COORDINATES.",ERR,ERROR,*999)
            MESH_COORDINATES=0
            DO node_idx = 1, MESH%TOPOLOGY(1)%PTR%NODES%NUmberOfNOdes
 
@@ -32936,7 +32950,7 @@ CONTAINS
            END DO ! node_idx
 
            ALLOCATE(MESH_COORDINATES_NEW(MESH%TOPOLOGY(1)%PTR%NODES%NUmberOfNOdes*3), STAT=ERR)
-           IF(ERR /= 0)   CALL FlagError(" Cannot allocate MESH_COORDINATES_NEW.",ERR,ERROR,*999)
+           IF(ERR/=0)   CALL FlagError(" Cannot allocate MESH_COORDINATES_NEW.",ERR,ERROR,*999)
            MESH_COORDINATES_NEW = 0.
 
 
@@ -33211,7 +33225,6 @@ CONTAINS
       IF(ASSOCIATED(COUPLED_MESH_DECOMPOSITION)) THEN
 
         COUPLED_MESH=>COUPLED_DECOMPOSITION%COUPLED_FIELDS(COUPLED_DECOMPOSITION%mesh_idx)%PTR%DECOMPOSITION%MESH
-
         IF(ASSOCIATED(COUPLED_MESH)) THEN
 
           NUMBER_OF_COMPUTATIONAL_NODES=COMPUTATIONAL_NODES_NUMBER_GET(ERR,ERROR)
@@ -33275,7 +33288,6 @@ CONTAINS
     RETURN 1
   END SUBROUTINE COUPLED_DECOMPOSITION_NEW_TO_OLD_VERTEX_MAPPING
 
-
 ! =========================================================================================================!
   !>The following subroutine build adjacencies of the new coupled mesh graph G_{i,merged}.
 
@@ -33290,7 +33302,8 @@ CONTAINS
     INTEGER(INTG)    :: index_start, index_end, inter_edge_idx, idx, LOC, & 
       & MAXIMUM_ADJACECNY_SIZE_OF_NEW_GRAPH,MY_COMPUTATIONAL_NODE, NUMBER_OF_COMPUTATIONAL_NODES, node_idx, & 
       & NODES_TO_RETAIN, NODES_TO_COLLAPSE, NUMBER_OF_ROWS_TO_DELETE, NUMBER_OF_NODES_IN_COUPLED_MESH_GRAPH, &
-      & NUMBER_OF_SURROUNDING_NODES, proc_idx, surrounding_node_idx, SURROUNDING_NODE
+      & NUMBER_OF_NODES_SUROUNDING_MERGED_NODE, NUMBER_OF_SURROUNDING_NODES, proc_idx, surrounding_node_idx, & 
+      & SURROUNDING_NODE
     INTEGER(INTG), ALLOCATABLE    :: ADJACECNY_SIZE_OF_THE_GRAPH(:),TEMP_ARRAY(:), TEMP_ARRAY_2D(:,:)
     TYPE(MESH_TYPE), POINTER      :: COUPLED_MESH
 
@@ -33302,12 +33315,11 @@ CONTAINS
         NUMBER_OF_COMPUTATIONAL_NODES=COMPUTATIONAL_NODES_NUMBER_GET(ERR,ERROR)
         MY_COMPUTATIONAL_NODE=COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR)
 
-
         ! At first allocate the COUPLED_DECOMPOSITION%MERGED_GRAPH_NODES to size equal to number of nodes in the original coupld mesh graph G_i. 
         NUMBER_OF_NODES_IN_COUPLED_MESH_GRAPH = SIZE(COUPLED_MESH%TOPOLOGY(1)%PTR%NODES%NODES,1) 
         ALLOCATE(COUPLED_DECOMPOSITION%MERGED_GRAPH_NODES(NUMBER_OF_NODES_IN_COUPLED_MESH_GRAPH), STAT=ERR)
         IF(ERR/=0) CALL FlagError("MERGED_GRAPH_NODES cannot be allocated.",ERR,ERROR,*999)
- 
+       ! Store adjacecy of the original graph in COUPLED_DECOMPOSITION%MERGED_GRAPH_NODES.
         DO node_idx = 1, SIZE(COUPLED_MESH%TOPOLOGY(1)%PTR%NODES%NODES,1)
 
           NUMBER_OF_SURROUNDING_NODES=SIZE(COUPLED_MESH%TOPOLOGY(1)%PTR%NODES%NODES(node_idx)%surroundingNOdes,1)
@@ -33323,9 +33335,27 @@ CONTAINS
         DO proc_idx = 1,  NUMBER_OF_COMPUTATIONAL_NODES
 
           NODES_TO_RETAIN = COUPLED_DECOMPOSITION%INTER_EDGES(1,proc_idx)
+ 
+          ! First determine number of nodes surrounding each merged node.
+          NUMBER_OF_NODES_SUROUNDING_MERGED_NODE = 0 
 
-          ALLOCATE(TEMP_ARRAY(SIZE(COUPLED_DECOMPOSITION%MERGED_GRAPH_NODES,1)* &
-            & SIZE(COUPLED_DECOMPOSITION%MERGED_GRAPH_NODES,1)), STAT=ERR)
+          DO inter_edge_idx = 2 , SIZE(COUPLED_DECOMPOSITION%INTER_EDGES,1)
+
+            NODES_TO_COLLAPSE = COUPLED_DECOMPOSITION%INTER_EDGES(inter_edge_idx,proc_idx)
+
+            NUMBER_OF_NODES_SUROUNDING_MERGED_NODE= NUMBER_OF_NODES_SUROUNDING_MERGED_NODE + & 
+              & SIZE(COUPLED_DECOMPOSITION%MERGED_GRAPH_NODES(NODES_TO_RETAIN)%surroundingNOdes,1)+1
+
+            IF(NODES_TO_COLLAPSE/=0) THEN
+
+              NUMBER_OF_NODES_SUROUNDING_MERGED_NODE=NUMBER_OF_NODES_SUROUNDING_MERGED_NODE + & 
+                & SIZE(COUPLED_DECOMPOSITION%MERGED_GRAPH_NODES(NODES_TO_COLLAPSE)%surroundingNOdes,1)-1
+
+            END IF
+
+          END DO  !inter_edge_idx
+
+          ALLOCATE(TEMP_ARRAY(NUMBER_OF_NODES_SUROUNDING_MERGED_NODE), STAT=ERR)
           IF(ERR/=0) CALL FlagError("TEMP_ARRAY cannot be allocated.",ERR,ERROR,*999)
 
           TEMP_ARRAY = 0
@@ -33337,10 +33367,9 @@ CONTAINS
           DO inter_edge_idx = 2 , SIZE(COUPLED_DECOMPOSITION%INTER_EDGES,1)
 
             NODES_TO_COLLAPSE = COUPLED_DECOMPOSITION%INTER_EDGES(inter_edge_idx,proc_idx)
+            index_start=index_start + SIZE(COUPLED_DECOMPOSITION%MERGED_GRAPH_NODES(NODES_TO_RETAIN)%surroundingNOdes,1)+1
 
             IF(NODES_TO_COLLAPSE/=0) THEN
-
-              index_start=index_start + SIZE(COUPLED_DECOMPOSITION%MERGED_GRAPH_NODES(NODES_TO_RETAIN)%surroundingNOdes,1)+1
 
               index_end = index_start + SIZE(COUPLED_DECOMPOSITION%MERGED_GRAPH_NODES(NODES_TO_COLLAPSE)%surroundingNOdes,1)-1
 
@@ -33362,19 +33391,14 @@ CONTAINS
            
         END DO !proc_idx
 
-
         ! In step 2, try to nullify nodes that are supposed to be merged.
-
         DO inter_edge_idx = 2 , SIZE(COUPLED_DECOMPOSITION%INTER_EDGES,1)
-          
           DO proc_idx = 1, NUMBER_OF_COMPUTATIONAL_NODES
 
             node_idx = COUPLED_DECOMPOSITION%INTER_EDGES(inter_edge_idx,proc_idx)
             IF(node_idx/=0) THEN
               COUPLED_DECOMPOSITION%MERGED_GRAPH_NODES(node_idx)%surroundingNOdes = -1
-
             END IF
-
 
           END DO !proc_idx
         END DO !inter_edge_idx
@@ -33383,9 +33407,7 @@ CONTAINS
         IF(ERR/=0) CALL FlagError("ADJACECNY_SIZE_OF_THE_GRAPH cannot be allocated.",ERR,ERROR,*999)
 
         DO node_idx = 1, SIZE(COUPLED_DECOMPOSITION%MERGED_GRAPH_NODES,1)
-
           ADJACECNY_SIZE_OF_THE_GRAPH(node_idx)=SIZE(COUPLED_DECOMPOSITION%MERGED_GRAPH_NODES(node_idx)%surroundingNOdes,1)
-
         END DO ! node_idx
 
         MAXIMUM_ADJACECNY_SIZE_OF_NEW_GRAPH = MAXVAL(ADJACECNY_SIZE_OF_THE_GRAPH) 
@@ -33430,7 +33452,7 @@ CONTAINS
         ALLOCATE(COUPLED_DECOMPOSITION%MERGED_GRAPH_NODES(SIZE(TEMP_ARRAY_2D,1)))
         IF(ERR/=0) CALL FlagError("MERGED_GRAPH_NODES cannot be allocated.",ERR,ERROR,*999)
 
-        !  Move the new vertex/node adjacencies to the surroundingNOdes data structure.
+        ! Move the new vertex/node adjacencies to the surroundingNOdes data structure.
         DO node_idx = 1, SIZE(COUPLED_DECOMPOSITION%MERGED_GRAPH_NODES,1)
 
           ALLOCATE(COUPLED_DECOMPOSITION%MERGED_GRAPH_NODES(node_idx)%surroundingNOdes( &
@@ -33443,7 +33465,7 @@ CONTAINS
 
         END DO  !node_idx
 
-       ! IN step 3 change the vertex ids according to the information stored in NEW_TO_OLD_INDEX_MAPPING(:,:) array.
+       ! In step 3 change the vertex ids according to the information stored in NEW_TO_OLD_INDEX_MAPPING(:,:) array.
         DO node_idx = 1, SIZE(COUPLED_DECOMPOSITION%MERGED_GRAPH_NODES,1)
 
           DO surrounding_node_idx = 1, SIZE(COUPLED_DECOMPOSITION%MERGED_GRAPH_NODES(node_idx)%surroundingNOdes)
