@@ -61720,85 +61720,46 @@ CONTAINS
 
   END SUBROUTINE cmfe_FieldMLIO_GetSession
 !================================================================================================================================
-  !>Following subroutine extract the local coordinates of a node, nodeIdx.
-  SUBROUTINE cmfe_MeshNodeXiGet(Mesh,NOdeIdx,LocalCoordinates,Err)
-
+  !>Following subroutine extract the local Xi coordinates of the global node "nodeIdx".
+  SUBROUTINE cmfe_MeshNodeXiGet(Mesh,NOdeIdx,XICoordinates,err)
     ! Argument variables
-    TYPE(cmfe_MeshType), INTENT(IN)               :: Mesh !<A cmfe_MeshType object.
-    INTEGER(INTG), INTENT(IN)                     :: NodeIdx !<Global Id of node to find LocalCoordinates for.
-    REAL(DP),  ALLOCATABLE, INTENT(OUT)           :: LocalCoordinates(:,:) !< An array that stores all possible LocalCoordinates for NOdeIdx
-    INTEGER(INTG), INTENT(OUT)                    :: Err !<The error code.
-
-    ! Local variables
-    INTEGER (INTG)                   :: ElementLocalIdx, NOdesIdx,NumberOfNodesInElement, &
-      & NumberOfElementsSurroundingNOde,NUMBER_OF_XI,LocalElementIdxNOdes,SurroundingNOdeIdx,TotalNodes
+    TYPE(cmfe_MeshType), INTENT(IN) :: Mesh !<A cmfe_MeshType object.
+    INTEGER(INTG), INTENT(IN) :: NodeIdx !<Global Id of node to find local XICoordinates for.
+    REAL(DP),  ALLOCATABLE, INTENT(OUT) :: XICoordinates(:,:) !<XICoordinates(element_idx,:). Contains local XI coordinates XI of node NODE_IDX with respect to the global element Id stored in XI_COORDINATES(element_idx,1).
+    INTEGER(INTG), INTENT(OUT):: err !<The error code.
 
     ENTERS("cmfe_MeshNodeXiGet",err,error,*999)
-
-    TotalNodes = SIZE(Mesh%MESH%TOPOLOGY(1)%PTR%NODES%NODES(:))
-    ! this would extract number of nodes in an element
-    NumberOfNodesInElement=SIZE(Mesh%MESH%TOPOLOGY(1)%PTR%ELEMENTS%ELEMENTS(1)%GLOBAL_ELEMENT_NODES(:))
-    ! this data structure would extract number of nodes surrouding an element
-    NUmberOfElementsSurroundingNOde = SIZE(Mesh%MESH%TOPOLOGY(1)%PTR%NODES%NODES(NOdeIdx)%surroundingElements(:))
-    ! allocating the output data strcuture
-    ALLOCATE(LocalCoordinates(NUmberOfElementsSurroundingNode,Mesh%MESH%NUMBER_OF_DIMENSIONS+1))
-
-    DO SurroundingNOdeIdx = 1, NUmberOfElementsSurroundingNOde
-      ! the following data structure extracts local element ids surrunding a node
-      ElementLocalIdx = Mesh%MESH%TOPOLOGY(1)%PTR%NODES%NODES(NOdeIdx)%surroundingElements(SurroundingNOdeIdx)
-
-      DO NOdesIdx = 1, NumberOfNodesInElement
-
-        IF(Mesh%MESH%TOPOLOGY(1)%PTR%ELEMENTS%ELEMENTS(ElementLocalIdx)%MESH_ELEMENT_NODES(NOdesIdx)==NodeIdx) EXIT
-
-      END DO
-
-      ! store local coordinate of a node wrt an all the elements its attached to
-      LocalCoordinates(SurroundingNOdeIdx,1)  = ElementLocalIdx
-      LocalCoordinates(SurroundingNOdeIdx,2:) = &
-        & (Mesh%MESH%TOPOLOGY(1)%PTR%ELEMENTS%ELEMENTS(1)%BASIS%NODE_POSITION_INDEX(NOdesIdx,:)-1.0)/ &
-          & REAL(Mesh%MESH%TOPOLOGY(1)%PTR%ELEMENTS%ELEMENTS(1)%BASIS%INTERPOLATION_ORDER,DP)
-
-    END DO
-
+    CALL MESH_NODE_XI_GET(Mesh%MESH,NOdeIdx,XICoordinates,err,error,*999)
     EXITS("cmfe_MeshNodeXiGet")
     RETURN
 999 ERRORSEXITS("cmfe_MeshNodeXiGet",err,error)
     CALL cmfe_HandleError(err,error)
     RETURN
 
-
   END SUBROUTINE cmfe_MeshNodeXiGet
 ! ==================================================================================!
   !>  The following subroutine gives nodes corresponding to ElementIdx
-
-  SUBROUTINE cmfe_Mesh_ElementNOdesGet(Mesh, ElementIdx, ElementNOdes,Err)
+  SUBROUTINE cmfe_Mesh_ElementNodesGet(Mesh, ElementIdx, ElementNOdes,err)
     ! Argument variables
     TYPE(cmfe_MeshType), INTENT(IN)               :: Mesh !<A cmfe_MeshType object.
     INTEGER(INTG), INTENT(IN)                     :: ElementIdx !<Global Id of element to find LocalCoordinates Xi for.
     INTEGER(INTG), INTENT(OUT),ALLOCATABLE        :: ElementNOdes(:) !< An array that stores global Ids of ElementIdx
-    INTEGER(INTG), INTENT(OUT)                    :: Err !<The error code.
+    INTEGER(INTG), INTENT(OUT)                    :: err !<The error code.
 
 
-    ENTERS("cmfe_Mesh_ElementNOdesGet.",err,error,*999)
-
-    ALLOCATE(ElementNOdes &
-   (SIZE(Mesh%MESH%TOPOLOGY(1)%PTR%ELEMENTS%ELEMENTS(ElementIdx)%MESH_ELEMENT_NODES(:))))
-    ! /todo maybe change domain(1) to domain(MeshCOmponentIdx)
-    ElementNOdes(:)= &
-      & Mesh%MESH%TOPOLOGY(1)%PTR%ELEMENTS%ELEMENTS(ElementIdx)%MESH_ELEMENT_NODES(:)
-
-    EXITS("cmfe_Mesh_ElementNOdesGet.")
+    ENTERS("cmfe_Mesh_ElementNodesGet.",err,error,*999)
+    CALL MESH_ELEMENT_NODES_GET(Mesh%MESH,ElementIdx,ElementNOdes, err, error, *999)
+    EXITS("cmfe_Mesh_ElementNodesGet.")
     RETURN
-999 ERRORSEXITS("cmfe_Mesh_ElementNOdesGet.",err,error)
+999 ERRORSEXITS("cmfe_Mesh_ElementNodesGet.",err,error)
     CALL cmfe_HandleError(err,error)
     RETURN
 
-  END SUBROUTINE cmfe_Mesh_ElementNOdesGet
+  END SUBROUTINE cmfe_Mesh_ElementNodesGet
 
   ! =====================================================================
   ! check weather node belongs to a dependent field component
-  ! =====================================================================
+
 
   SUBROUTINE CMFE_DOMAIN_TOPOLOGY_NODE_CHECK_EXISTS(field, variableType , nodeUserNumber , componentNumber,UserNodeExist,err  )
 
@@ -61840,13 +61801,11 @@ CONTAINS
 ! ====================================================================================================
 !> THe following subroutine  is used set TPWGT parameter.
 
-
   SUBROUTINE cmfe_Decomposition_DecompositionTpwgtSet(decomposition,TPWGT,err)
-
     !Argument variables
     TYPE(cmfe_DecompositionType), INTENT(INOUT) :: decomposition !<The decomposition to set tpwgt for.
-    REAL(DP),INTENT(IN)                      :: TPWGT(:) !<Array representing TPWGTS.
-    INTEGER(INTG), INTENT(OUT)               :: err !<The error code.
+    REAL(DP),INTENT(IN)  :: TPWGT(:) !<Array representing TPWGTS.
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
 
     !Local variables
     ENTERS("CMFE_Decomposition_DecompositionTpwgtSet",err,error,*999)
@@ -61863,14 +61822,12 @@ CONTAINS
 
 ! =======================================================================================================================
  !> The following subroutine  is used to activate vertex based partitioning.
-
-
   SUBROUTINE cmfe_Decomposition_NodeBasedDecompositionSet(decomposition,NOdeBasedDecomposition,err)
 
     !Argument variables
-    TYPE(cmfe_DecompositionType), INTENT(IN) :: decomposition !<The decomposition to get the type for.
-    LOGICAL, INTENT(IN)                      :: NOdeBasedDecomposition
-    INTEGER(INTG), INTENT(OUT)               :: err !<The error code.
+    TYPE(cmfe_DecompositionType), INTENT(INOUT) :: decomposition !<The decomposition to get the type for.
+    LOGICAL, INTENT(IN) :: NOdeBasedDecomposition !<Parameters set to true for activating vertex-based decomposition.
+    INTEGER(INTG), INTENT(OUT)  :: err !<The error code.
 
     !Local variables
     ENTERS("cmfe_Decomposition_NodeBasedDecompositionSet",err,error,*999)
@@ -61879,7 +61836,7 @@ CONTAINS
 
     EXITS("cmfe_Decomposition_NodeBasedDecompositionSet")
     RETURN
-999 ERRORSEXITS("CMFE_Decomposition_DecompositionTpwgtSet",err,error)
+999 ERRORSEXITS("cmfe_...NodeBasedDecompositionSet",err,error)
     CALL cmfe_HandleError(err,error)
     RETURN
 
@@ -61888,14 +61845,12 @@ CONTAINS
 
 ! =======================================================================================================================
   !> THe following subroutine  is used to set UBVEC parameter.
-
-
   SUBROUTINE cmfe_Decomposition_DecompositionUBVECSet(decomposition,UBVEC,err)
 
     !Argument variables
     TYPE(cmfe_DecompositionType), INTENT(INOUT) :: decomposition !<The decomposition to get the type for.
-    REAL(DP),INTENT(IN)                         :: UBVEC(:)
-    INTEGER(INTG), INTENT(OUT)                  :: err !<The error code.
+    REAL(DP),INTENT(IN)  :: UBVEC(:) !< UBVEC(constraint_idx). Stores tolerance for constraint_idx.
+    INTEGER(INTG), INTENT(OUT)  :: err !<The error code.
 
     !Local variables
     ENTERS("cmfe_Decomposition_DecompositionUbvecSet",err,error,*999)
@@ -61913,14 +61868,11 @@ CONTAINS
 
 ! =======================================================================================================================
   !> THe following subroutine  is used to set number of vertex constraints to be balanced.
-
-
   SUBROUTINE cmfe_Decomposition_NumberOfConstraintsSet(decomposition,NUmberOfCOnstraints,err)
-
     !Argument variables
     TYPE(cmfe_DecompositionType), INTENT(INOUT) :: decomposition !<The decomposition to get the type for.
-    INTEGER(INTG), INTENT(IN)                   :: NumberOfCOnstraints
-    INTEGER(INTG), INTENT(OUT)                  :: err !<The error code.
+    INTEGER(INTG), INTENT(IN)  :: NumberOfConstraints !< Number of constraint to balance per vertex.
+    INTEGER(INTG), INTENT(OUT)  :: err !<The error code.
 
     !Local variables
     ENTERS("cmfe_Decomposition_NumberOfConstraintsSet",err,error,*999)
@@ -61937,8 +61889,8 @@ CONTAINS
 
    !Argument variables
     TYPE(cmfe_DecompositionType), INTENT(INOUT) :: Decomposition !<The decomposition object to set node weights for.
-    INTEGER(INTG), INTENT(IN)                   :: NOdeWeightSet(:) !<A set of node weights to be assigned.
-    INTEGER(INTG), INTENT(OUT)                  :: err !<The error code.
+    INTEGER(INTG), INTENT(IN) :: NOdeWeightSet(:) !<A set of node weights to be assigned.
+    INTEGER(INTG), INTENT(OUT):: err !<The error code.
 
     !Local variables
     ENTERS("cmfe_Decomposition_NodeWeightSet.",err,error,*999)
@@ -61955,6 +61907,7 @@ CONTAINS
 
 ! =======================================================================================================================
   !>Initialises a cmfe_CoupledDecompositionType object.
+
   SUBROUTINE cmfe_CoupledDecomposition_Initialise(CoupledDecomposition, err)
     !DLLEXPORT(cmfe_MeshEmbedding_Initialise)
     !Argument variables
@@ -61976,12 +61929,12 @@ CONTAINS
 ! =======================================================================================================================
   !>Create start cmfe_CoupledDecompositionType object.
 
-  SUBROUTINE cmfe_CoupledDecomposition_CreateStart(CoupledDecomposition, CoupledDecompositionUserNUmber, Err)
+  SUBROUTINE cmfe_CoupledDecomposition_CreateStart(CoupledDecomposition, CoupledDecompositionUserNUmber, err)
 
     !Argument variables
     TYPE(cmfe_CoupledDecompositionType), INTENT(OUT) ::  CoupledDecomposition !<The CoupledDecompositionType object to create stqart.
-    INTEGER(INTG)                                    ::  CoupledDecompositionUserNUmber !<The user number of the COupled decomposition to create start.
-    INTEGER(INTG), INTENT(OUT)                       ::  Err !<The error code.
+    INTEGER(INTG), INTENT(IN)::  CoupledDecompositionUserNUmber !<The user number of the COupled decomposition to create start.
+    INTEGER(INTG), INTENT(OUT)::  err !<The error code.
 
     ENTERS("cmfe_CoupledDecomposition_CreateStart",err,error,*999)
 
@@ -61992,7 +61945,7 @@ CONTAINS
     EXITS("cmfe_CoupledDecomposition_CreateStart")
     RETURN
 999 ERRORSEXITS("cmfe_CoupledDecomposition_CreateStart",err,error)
-    CALL cmfe_HandleError(err,error)
+    CALL cmfe_Handleerror(err,error)
     RETURN
 
   END SUBROUTINE  cmfe_CoupledDecomposition_CreateStart
@@ -62001,13 +61954,12 @@ CONTAINS
  !=================================================================================================================
   !> The following subroutine adds the geometric field information of the coupled mesh graph G_{i} in cmfe_CoupledDecomposition object.
 
-
   SUBROUTINE cmfe_CoupledDecomposition_AddCoupledMesh(COupledDecomposition, GeometricField, err)
 
 
     !Argument variables
     TYPE(cmfe_CoupledDecompositionType), INTENT(INOUT) :: COupledDecomposition !<The cmfe_DecompositionType object to initialise.
-    TYPE(cmfe_FieldType), INTENT(IN)                   :: GeometricField !<cmfe_FieldType object representing the geometric field of the coupled mesh graph.
+    TYPE(cmfe_FieldType), INTENT(IN) :: GeometricField !<cmfe_FieldType object representing the geometric field of the coupled mesh graph.
     INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
 
@@ -62031,8 +61983,8 @@ CONTAINS
 
     !Argument variables
     TYPE(cmfe_CoupledDecompositionType), INTENT(INOUT)  :: COupledDecomposition !<The cmfe_CoupledDecompositionType object to initialise.
-    TYPE(cmfe_FieldType), INTENT(IN)                    :: Field !<cmfe_FieldType object representing the geometric field of the interface mesh graph.
-    INTEGER(INTG), INTENT(OUT)                          :: err !<The error code.
+    TYPE(cmfe_FieldType), INTENT(IN) :: Field !<cmfe_FieldType object representing the geometric field of the interface mesh graph.
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
     !Local variables
 
     ENTERS("cmfe_CoupledDecomposition_AddInterface",err,error,*999)
@@ -62053,7 +62005,7 @@ CONTAINS
 
     !Argument variables
     TYPE(cmfe_CoupledDecompositionType), INTENT(INOUT) ::  CoupledDecomposition !<The cmfe_CoupledDecompositionType object to finish creating.
-    INTEGER(INTG), INTENT(OUT)                         ::  err !<The error code.
+    INTEGER(INTG), INTENT(OUT) ::  err !<The error code.
 
     !Local Variables
     ENTERS("cmfe_CoupledDecomposition_CreateFinish",err,error,*999)
@@ -62069,15 +62021,15 @@ CONTAINS
   END SUBROUTINE  cmfe_CoupledDecomposition_CreateFinish
 
  !=================================================================================================================
-  !> The following subroutine assigns the vertex-based decomposition field represented by Decomposition%Decomposition%NODE_DOMAIN(:) to the Field object.
-  SUBROUTINE cmfe_Decomposition_AssignDecompositionField(Field,Decomposition,VariableType, Err)
+  !> The following subroutine assigns the vertex-based decomposition field represented by Decomposition%Decomposition%NODE_DOMAIN to the Field object.
+  SUBROUTINE cmfe_Decomposition_AssignDecompositionField(Field,Decomposition,VariableType, err)
 
     !Argument variables
-    TYPE(cmfe_FieldType), INTENT(INOUT)      :: Field !<cmfe_FieldType object to be assigned the vertex-based decomposition field.
+    TYPE(cmfe_FieldType), INTENT(INOUT) :: Field !<cmfe_FieldType object to be assigned the vertex-based decomposition field.
     TYPE(cmfe_DecompositionType), INTENT(IN) :: Decomposition  !<cmfe_DecompositionType object whose member Decomposition%Decomposition%NODE_DOMAIN ...
                                                                ! ... is to be assigned to the Field object .
-    INTEGER(INTG), INTENT(IN)                :: VariableType   !<The variable type of the Field object to set the vertex-based decomposition field.
-    INTEGER(INTG), INTENT(OUT)               :: Err !<The error code.
+    INTEGER(INTG), INTENT(IN):: VariableType   !<The variable type of the Field object to set the vertex-based decomposition field.
+    INTEGER(INTG), INTENT(OUT)  :: err !<The error code.
 
     ENTERS("cmfe_Decomposition_AssignDecompositionField",err,error,*999)
 
@@ -62098,8 +62050,8 @@ CONTAINS
 
     !Argument variables
     TYPE(cmfe_CoupledDecompositionType), INTENT(IN) :: CoupledDecomposition !<cmfe_CoupledDecompositionType object to get the node domains from.
-    TYPE(cmfe_DecompositionType), INTENT(INOUT)     :: Decomposition !<cmfe_DecompositionType object representing decomposition object of the interface mesh graph.
-    INTEGER(INTG), INTENT(OUT)                      :: err !<The error code.
+    TYPE(cmfe_DecompositionType), INTENT(INOUT) :: Decomposition !<cmfe_DecompositionType object representing decomposition object of the interface mesh graph.
+    INTEGER(INTG), INTENT(OUT)   :: err !<The error code.
 
     ENTERS("cmfe_CoupledDecomposition_Update",err,error,*999)
 
@@ -62120,8 +62072,8 @@ CONTAINS
   SUBROUTINE cmfe_CoupledDecomposition_UpdateInterface(CoupledDecomposition,Decomposition, err)
     !Argument variables
     TYPE(cmfe_CoupledDecompositionType), INTENT(IN) :: CoupledDecomposition !<cmfe_CoupledDecompositionType object to get the node domains from.
-    TYPE(cmfe_DecompositionType), INTENT(INOUT)     :: Decomposition !< cmfe_DecompositionType object representing decomposition object of the coupled mesh graph.
-    INTEGER(INTG), INTENT(OUT)                      :: err !<The error code.
+    TYPE(cmfe_DecompositionType), INTENT(INOUT) :: Decomposition !< cmfe_DecompositionType object representing decomposition object of the coupled mesh graph.
+    INTEGER(INTG), INTENT(OUT)  :: err !<The error code.
 
     ENTERS("cmfe_CoupledDecomposition_UpdateInterface",err,error,*999)
 
@@ -62143,8 +62095,8 @@ CONTAINS
   SUBROUTINE cmfe_CoupledDecomposition_NullifyGeometry(Field, err)
 
     !Argument variables
-    TYPE(cmfe_FieldType), INTENT(INOUT)      :: Field !<cmfe_FieldType object to nullify.
-    INTEGER(INTG), INTENT(OUT)               :: err !<The error code.
+    TYPE(cmfe_FieldType), INTENT(INOUT) :: Field !<cmfe_FieldType object to nullify.
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
 
     ENTERS("cmfe_CoupledDecomposition_NullifyGeometry",err,error,*999)
 
@@ -62163,8 +62115,8 @@ CONTAINS
 
   SUBROUTINE cmfe_CoupledDecomposition_NullifyRegion(Region, err)
     !Argument variables
-    TYPE(cmfe_RegionType), INTENT(INOUT)        :: Region !<cmfe_RegionType object to nullify.
-    INTEGER(INTG), INTENT(OUT)                  :: err !<The error code.
+    TYPE(cmfe_RegionType), INTENT(INOUT) :: Region !<cmfe_RegionType object to nullify.
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
 
     ENTERS("cmfe_CoupledDecomposition_NullifyRegion.",err,error,*999)
 
@@ -62173,8 +62125,8 @@ CONTAINS
 
     EXITS("cmfe_CoupledDecomposition_NullifyRegion.")
     RETURN
-999 ERRORSEXITS("cmfe_CoupledDecomposition_NullifyRegion.",Err,error)
-    CALL cmfe_HandleError(err,error)
+999 ERRORSEXITS("cmfe_CoupledDecomposition_NullifyRegion.",err,error)
+    CALL cmfe_Handleerror(err,error)
     RETURN
 
   END SUBROUTINE  cmfe_CoupledDecomposition_NullifyRegion
@@ -62183,10 +62135,9 @@ CONTAINS
  !> This subroutine nullify the interface geometric field.
 
   SUBROUTINE cmfe_CoupledDecomposition_NullifyInterface(Interface, err)
-
     !Argument variables
-    TYPE(cmfe_InterfaceType), INTENT(INOUT)     :: Interface !<cmfe_InterfaceType object to nullify the geometric field of.
-    INTEGER(INTG), INTENT(OUT)                  :: err !<The error code.
+    TYPE(cmfe_InterfaceType), INTENT(INOUT)  :: Interface !<cmfe_InterfaceType object to nullify the geometric field of.
+    INTEGER(INTG), INTENT(OUT):: err !<The error code.
 
     ENTERS("cmfe_CoupledDecomposition_NullifyInterface.",err,error,*999)
 
@@ -62200,8 +62151,6 @@ CONTAINS
     RETURN
 
   END SUBROUTINE  cmfe_CoupledDecomposition_NullifyInterface
-
- !================================================================================================================
 
 
 END MODULE OpenCMISS_Iron

@@ -208,8 +208,10 @@ MODULE MESH_ROUTINES
 
   PUBLIC MESHES_INITIALISE,MESHES_FINALISE
 
+  PUBLIC MESH_ELEMENT_NODES_GET, MESH_NODE_XI_GET
+
   PUBLIC DECOMPOSITION_TPWGT_SET, DECOMPOSITION_NODE_BASED_DECOMPOSITION_SET, &
-    & DECOMPOSITION_UBVEC_SET, DECOMPOSITION_NUMBER_OF_CONSTRAINTS_SET,&
+    & DECOMPOSITION_UBVEC_SET, DECOMPOSITION_NUMBER_OF_CONSTRAINTS_SET, &
     & DECOMPOSITION_NODE_WEIGHT_SET, GET_SURROUNDING_NODES
 
 
@@ -11104,10 +11106,80 @@ CONTAINS
 
   END SUBROUTINE DECOMPOSITION_USER_NUMBER_TO_DECOMPOSITION
 !================================================================================================================================
+  !> Following routine extracts global node Ids of the element element_idx.
+  SUBROUTINE MESH_ELEMENT_NODES_GET(MESH, ELEMENT_IDX, ELEMENT_NODES, ERR, ERROR, *)
+    !Argument
+    TYPE(MESH_TYPE), POINTER, INTENT(IN)  :: MESH !<A pointer to the mesh object.
+    INTEGER(INTG), INTENT(IN) :: ELEMENT_IDX !<Global id of element to to  extract global node ids of.
+    INTEGER(INTG), INTENT(OUT), ALLOCATABLE :: ELEMENT_NODES(:) !<Array to store global node ids in.
+    INTEGER(INTG), INTENT(OUT)        :: ERR !<The error code.
+    TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string.
+
+    ENTERS("MESH_ELEMENT_NODES_GET",ERR,ERROR,*999)
+
+    IF(ASSOCIATED(MESH)) THEN
+      ALLOCATE(ELEMENT_NODES &
+        & (SIZE(MESH%TOPOLOGY(1)%PTR%ELEMENTS%ELEMENTS(ELEMENT_IDX)%MESH_ELEMENT_NODES,1)),STAT=ERR)
+      IF(ERR/=0) CALL FlagError("Could not allocate ELEMENT_NODES.",ERR,ERROR,*999)
+      ELEMENT_NODES = MESH%TOPOLOGY(1)%PTR%ELEMENTS%ELEMENTS(ELEMENT_IDX)%MESH_ELEMENT_NODES
+    ELSE
+      CALL FlagError("Mesh is not associated.",ERR,ERROR,*999)
+    END IF
+    RETURN
+999 ERRORSEXITS("MESH_ELEMENT_NODES_GET",ERR,ERROR)
+    RETURN 1
+  END SUBROUTINE MESH_ELEMENT_NODES_GET
+!================================================================================================================================
+  !>Following subroutine extract the local Xi coordinates of the global node "NODE_IDX".
+  SUBROUTINE MESH_NODE_XI_GET(MESH,GLOBAL_NODE_ID,XI_COORDINATES,ERR,ERROR,*)
+    !Argument
+    TYPE(MESH_TYPE), POINTER, INTENT(IN)  :: MESH !<A pointer to the mesh object.
+    INTEGER(INTG), INTENT(IN) :: GLOBAL_NODE_ID !<Global Id of node to to  extract local XI coordinates for.
+    REAL(DP), INTENT(OUT), ALLOCATABLE :: XI_COORDINATES(:,:) !XI_COORDINATES(element_idx,:). Contains local XI coordinates XI of node GLOBAL_NODE_ID with respect to the global element Id stored in XI_COORDINATES(element_idx,1).
+    INTEGER(INTG), INTENT(OUT) :: ERR !<The error code.
+    TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string.
+
+    !Local variables
+    INTEGER(INTG) :: element_idx, ELEMENT_NUMBER_OF_NODES, ELEMENTS_SURROUNDING_NODE, node_idx, surrounding_element
+
+    ENTERS("MESH_NODE_XI_GET",ERR,ERROR,*999)
+
+    IF(ASSOCIATED(MESH)) THEN
+      ! Extracting number of nodes in an element.
+      ELEMENT_NUMBER_OF_NODES=SIZE(MESH%TOPOLOGY(1)%PTR%ELEMENTS%ELEMENTS(1)%GLOBAL_ELEMENT_NODES,1)
+      ! Extracting number of surrounding an element.
+      ELEMENTS_SURROUNDING_NODE = SIZE(MESH%TOPOLOGY(1)%PTR%NODES%NODES(GLOBAL_NODE_ID)%surroundingElements,1)
+      ! allocating the output data strcuture
+      ALLOCATE(XI_COORDINATES(ELEMENTS_SURROUNDING_NODE,MESH%NUMBER_OF_DIMENSIONS+1), STAT=ERR)
+      IF(ERR/=0) CALL FlagError("Could not allocate XI_COORDINATES.",ERR,ERROR,*999)
+
+      DO element_idx = 1, ELEMENTS_SURROUNDING_NODE
+        surrounding_element = MESH%TOPOLOGY(1)%PTR%NODES%NODES(GLOBAL_NODE_ID)%surroundingElements(element_idx)
+
+        DO node_idx = 1, ELEMENT_NUMBER_OF_NODES
+          IF(MESH%TOPOLOGY(1)%PTR%ELEMENTS%ELEMENTS(surrounding_element)%MESH_ELEMENT_NODES(node_idx)==GLOBAL_NODE_ID) EXIT
+        END DO
+
+        ! Store  the local XI coordinate of GLOBAL_NODE_ID with respect to the adjacent global element Id surrounding_element.
+        XI_COORDINATES(element_idx,1)  = surrounding_element
+        XI_COORDINATES(element_idx,2:) = &
+          & (MESH%TOPOLOGY(1)%PTR%ELEMENTS%ELEMENTS(surrounding_element)%BASIS%NODE_POSITION_INDEX(node_idx,:)-1.0)/ &
+          & REAL(MESH%TOPOLOGY(1)%PTR%ELEMENTS%ELEMENTS(surrounding_element)%BASIS%INTERPOLATION_ORDER,DP)
+      END DO !element_idx
+    ELSE
+      CALL FlagError("Mesh is not associated.",ERR,ERROR,*999)
+    END IF
+    RETURN
+999 ERRORSEXITS("MESH_NODE_XI_GET",ERR,ERROR)
+    RETURN 1
+  END SUBROUTINE MESH_NODE_XI_GET
+
+
+!================================================================================================================================
   !> Following routine sets tpwgts data structure for ParMETIS
  SUBROUTINE DECOMPOSITION_TPWGT_SET(DECOMPOSITION, TPWGT, ERR, error, *)
     !Argument
-    TYPE(DECOMPOSITION_TYPE), POINTER :: DECOMPOSITION !<A pointer to the decomposition to calculate the vertex domains for.
+    TYPE(DECOMPOSITION_TYPE), POINTER, INTENT(INOUT):: DECOMPOSITION !<A pointer to the decomposition to calculate the vertex domains for.
     REAL(DP), INTENT(IN)              :: TPWGT(:) !<An array that specifies the distribution of processor load.
     INTEGER(INTG), INTENT(OUT)        :: ERR !<The error code.
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string.
@@ -11142,7 +11214,7 @@ CONTAINS
 
   SUBROUTINE DECOMPOSITION_NODE_BASED_DECOMPOSITION_SET(DECOMPOSITION, NODE_BASED_DECOMPOSITION, ERR, error, *)
     !Argument
-    TYPE(DECOMPOSITION_TYPE), POINTER :: DECOMPOSITION !<A pointer to the decomposition to calculate the element domains for.
+    TYPE(DECOMPOSITION_TYPE), POINTER, INTENT(INOUT) :: DECOMPOSITION !<A pointer to the decomposition to calculate the element domains for.
     LOGICAL, INTENT(IN)               :: NODE_BASED_DECOMPOSITION
     INTEGER(INTG), INTENT(OUT)        :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
@@ -11175,7 +11247,7 @@ CONTAINS
  !> Following routine sets ubvec parameter for vertex-wise decomposition
   SUBROUTINE DECOMPOSITION_UBVEC_SET(DECOMPOSITION, UBVEC, ERR, error, *)
     !Argument
-    TYPE(DECOMPOSITION_TYPE), POINTER :: DECOMPOSITION !<A pointer to the decomposition to calculate the vertex domains for.
+    TYPE(DECOMPOSITION_TYPE), POINTER, INTENT(INOUT) :: DECOMPOSITION !<A pointer to the decomposition to calculate the vertex domains for.
     REAL(DP), INTENT(IN)              :: UBVEC(:) ! SPecifies error in vertex load distribution.
     INTEGER(INTG), INTENT(OUT)        :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
@@ -11203,7 +11275,7 @@ CONTAINS
   !> Following routine sets number of constraints  for decomposition
  SUBROUTINE DECOMPOSITION_NUMBER_OF_CONSTRAINTS_SET(DECOMPOSITION, NUMBER_OF_CONSTRAINTS, ERR, error, *)
     !Argument
-    TYPE(DECOMPOSITION_TYPE), POINTER :: DECOMPOSITION !<A pointer to the decomposition to calculate the element domains for.
+    TYPE(DECOMPOSITION_TYPE), POINTER, INTENT(INOUT) :: DECOMPOSITION !<A pointer to the decomposition to calculate the element domains for.
     INTEGER(INTG), INTENT(IN)         :: NUMBER_OF_CONSTRAINTS !< Number of vertex load constraints to balance.
     INTEGER(INTG), INTENT(OUT)        :: ERR !<The error code.
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string.
@@ -11229,7 +11301,7 @@ CONTAINS
   !> Following routine sets node weights on a coupled mesh graph G_i.
    SUBROUTINE DECOMPOSITION_NODE_WEIGHT_SET(DECOMPOSITION, NODE_WEIGHT_SET, ERR, error, *)
     !Argument
-    TYPE(DECOMPOSITION_TYPE), POINTER :: DECOMPOSITION !<A pointer to the decomposition to calculate the element domains for.
+    TYPE(DECOMPOSITION_TYPE), POINTER, INTENT(INOUT) :: DECOMPOSITION !<A pointer to the decomposition to calculate the element domains for.
     INTEGER(INTG), INTENT(IN)         :: NODE_WEIGHT_SET(:)
     INTEGER(INTG), INTENT(OUT)        :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
@@ -11271,7 +11343,6 @@ CONTAINS
     IF(ASSOCIATED(MESH)) THEN
 
       BASIS=>MESH%TOPOLOGY(1)%PTR%ELEMENTS%ELEMENTS(1)%BASIS
- 
       IF(ASSOCIATED(BASIS)) THEN
 
         IF(BASIS%NUMBER_OF_NODES==2_INTG .AND. BASIS%TYPE==BASIS_LAGRANGE_HERMITE_TP_TYPE &
@@ -11358,8 +11429,8 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT)        :: ERROR !<The error string
 
     ! Local variables
-    INTEGER(INTG)                            :: AdjacentNode,ElementIdx,MeshNUmberOfNOdes, &
-      & MeshNOde,NOdeIdx,NUMBER_OF_SURROUNDING_NODES
+    INTEGER(INTG)                            :: AdjacentNode,element_idx,MeshNUmberOfNOdes, &
+      & MeshNOde,node_idx,NUMBER_OF_SURROUNDING_NODES
     TYPE(MeshNodesType), pointer             :: meshNOdes
     INTEGER(INTG), ALLOCATABLE               :: SURROUNDING_NODES(:)
     TYPE(LIST_PTR_TYPE), ALLOCATABLE         :: SURROUNDING_NODE_LIST(:)
@@ -11385,80 +11456,80 @@ CONTAINS
         CALL LIST_INITIAL_SIZE_SET(SURROUNDING_NODE_LIST(MeshNOde)%PTR,MeshnumberOfNodes, ERR,ERROR,*999)
         CALL LIST_CREATE_FINISH(SURROUNDING_NODE_LIST(MeshNOde)%PTR,ERR,ERROR,*999)
 
-        DO ElementIdx = 1, SIZE(MESH%TOPOLOGY(1)%ptr%Elements%Elements,1)
+        DO element_idx = 1, SIZE(MESH%TOPOLOGY(1)%ptr%Elements%Elements,1)
 
-          DO NOdeIdx = 1, 9
+          DO node_idx = 1, 9
 
-            IF(MESH%TOPOLOGY(1)%ptr%Elements%Elements(ElementIdx)%GLOBAL_ELEMENT_NODES(NOdeIdx) == MeshNOde) THEN
+            IF(MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(node_idx) == MeshNOde) THEN
 
-              IF(NOdeIdx == 1) THEN !Local node 1 is surrounded with node 2 and 4.
+              IF(node_idx == 1) THEN !Local node 1 is surrounded with node 2 and 4.
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(2)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(2)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(4)
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(4)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-              ELSE IF(NOdeIdx == 2) THEN !Local node 3 is surrounded with node 1 and 3.
+              ELSE IF(node_idx == 2) THEN !Local node 3 is surrounded with node 1 and 3.
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(1)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(1)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(3)
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(3)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-              ELSE IF(NOdeIdx == 3) THEN !Local node 1 is surrounded with node 2 and 6.
+              ELSE IF(node_idx == 3) THEN !Local node 1 is surrounded with node 2 and 6.
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(2)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(2)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(6)
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(6)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-              ELSE IF(NOdeIdx == 4) THEN !Local node 4 is surrounded with node 1 and 7.
+              ELSE IF(node_idx == 4) THEN !Local node 4 is surrounded with node 1 and 7.
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(1)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(1)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(7)
-                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
-
-
-              ELSE IF(NOdeIdx == 5) THEN !Local node 5 is surrounded with no node.
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(5)
-                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
-
-              ELSE IF(NOdeIdx == 6) THEN !Local node 6 is surrounded with node 3 and 9.
-
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(3)
-                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
-
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(9)
-                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
-
-              ELSE IF(NOdeIdx == 7) THEN !Local node 7 is surrounded with node 8 and 4.
-
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(4)
-                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
-
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(8)
-                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
-
-              ELSE IF(NOdeIdx == 8) THEN !Local node 8 is surrounded with node 7 and 9.
-
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(7)
-                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
-
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(9)
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(7)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
 
-              ELSE IF(NOdeIdx == 9) THEN !Local node 9 is surrounded with node 6 and 8.
-
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(6)
+              ELSE IF(node_idx == 5) THEN !Local node 5 is surrounded with no node.
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(5)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(8)
+              ELSE IF(node_idx == 6) THEN !Local node 6 is surrounded with node 3 and 9.
+
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(3)
+                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
+
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(9)
+                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
+
+              ELSE IF(node_idx == 7) THEN !Local node 7 is surrounded with node 8 and 4.
+
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(4)
+                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
+
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(8)
+                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
+
+              ELSE IF(node_idx == 8) THEN !Local node 8 is surrounded with node 7 and 9.
+
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(7)
+                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
+
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(9)
+                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
+
+
+              ELSE IF(node_idx == 9) THEN !Local node 9 is surrounded with node 6 and 8.
+
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(6)
+                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
+
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(8)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
               END  IF
@@ -11506,8 +11577,8 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT)        :: ERROR !<The error string
 
     ! Local variables
-    INTEGER(INTG)                            :: AdjacentNode,ElementIdx,MeshNUmberOfNOdes, &
-      & MeshNOde,NOdeIdx,NUMBER_OF_SURROUNDING_NODES
+    INTEGER(INTG)                            :: AdjacentNode,element_idx,MeshNUmberOfNOdes, &
+      & MeshNOde,node_idx,NUMBER_OF_SURROUNDING_NODES
     TYPE(MeshNodesType), pointer             :: meshNOdes
     INTEGER(INTG), ALLOCATABLE               :: SURROUNDING_NODES(:)
     TYPE(LIST_PTR_TYPE), ALLOCATABLE         :: SURROUNDING_NODE_LIST(:)
@@ -11530,127 +11601,127 @@ CONTAINS
         CALL LIST_INITIAL_SIZE_SET(SURROUNDING_NODE_LIST(MeshNOde)%PTR,MeshnumberOfNodes, ERR,ERROR,*999)
         CALL LIST_CREATE_FINISH(SURROUNDING_NODE_LIST(MeshNOde)%PTR,ERR,ERROR,*999)
 
-        DO ElementIdx = 1, SIZE(MESH%TOPOLOGY(1)%ptr%Elements%Elements,1)
+        DO element_idx = 1, SIZE(MESH%TOPOLOGY(1)%ptr%Elements%Elements,1)
 
-          DO NOdeIdx = 1, 16
+          DO node_idx = 1, 16
 
-            IF(MESH%TOPOLOGY(1)%ptr%Elements%Elements(ElementIdx)%GLOBAL_ELEMENT_NODES(NOdeIdx) == MeshNOde) THEN
+            IF(MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(node_idx) == MeshNOde) THEN
 
-              IF(NOdeIdx == 1) THEN !Local node 1 is surrounded with node 2 and 5.
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(2)
+              IF(node_idx == 1) THEN !Local node 1 is surrounded with node 2 and 5.
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(2)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(5)
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(5)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-              ELSE IF(NOdeIdx == 2) THEN !Local node 2 is surrounded with node 1 and 3.
+              ELSE IF(node_idx == 2) THEN !Local node 2 is surrounded with node 1 and 3.
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(1)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(1)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(3)
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(3)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-              ELSE IF(NOdeIdx == 3) THEN !Local node 3 is surrounded with node 2 and 4.
+              ELSE IF(node_idx == 3) THEN !Local node 3 is surrounded with node 2 and 4.
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(2)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(2)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(4)
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(4)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-              ELSE IF(NOdeIdx == 4) THEN !Local node 4 is surrounded with node 3 and 8.
+              ELSE IF(node_idx == 4) THEN !Local node 4 is surrounded with node 3 and 8.
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(3)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(3)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(8)
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(8)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-              ELSE IF(NOdeIdx == 5) THEN !Local node 5 is surrounded with node 1 and 9.
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(1)
+              ELSE IF(node_idx == 5) THEN !Local node 5 is surrounded with node 1 and 9.
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(1)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(9)
-                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
-
-              ELSE IF(NOdeIdx == 6) THEN !Local node 6 not surrounded with any node.
-
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(6)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(9)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-              ELSE IF(NOdeIdx == 7) THEN !Local node 7 not surrounded with any node.
+              ELSE IF(node_idx == 6) THEN !Local node 6 not surrounded with any node.
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(7)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(6)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-              ELSE IF(NOdeIdx == 8) THEN !Local node 8 is surrounded with node 4 and 12.
+              ELSE IF(node_idx == 7) THEN !Local node 7 not surrounded with any node.
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(4)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(7)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(12)
+              ELSE IF(node_idx == 8) THEN !Local node 8 is surrounded with node 4 and 12.
+
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(4)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-              ELSE IF(NOdeIdx == 9) THEN !Local node 9 is surrounded with node 5 and 13.
-
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(5)
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(12)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(13)
+              ELSE IF(node_idx == 9) THEN !Local node 9 is surrounded with node 5 and 13.
+
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(5)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-              ELSE IF(NOdeIdx == 10) THEN !Local node 10 is not surrounded with any node.
-
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(10)
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(13)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-              ELSE IF(NOdeIdx == 11) THEN !Local node 11 is not surrounded with any node.
+              ELSE IF(node_idx == 10) THEN !Local node 10 is not surrounded with any node.
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(11)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(10)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-              ELSE IF(NOdeIdx == 12) THEN !Local node 12 is surrounded with node 8 and 16.
+              ELSE IF(node_idx == 11) THEN !Local node 11 is not surrounded with any node.
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(8)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(11)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(16)
+              ELSE IF(node_idx == 12) THEN !Local node 12 is surrounded with node 8 and 16.
+
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(8)
+                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
+
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(16)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
 
-              ELSE IF(NOdeIdx == 13) THEN !Local node 13 is surrounded with node 9 and 14.
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(9)
+              ELSE IF(node_idx == 13) THEN !Local node 13 is surrounded with node 9 and 14.
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(9)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(14)
-                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
-
-              ELSE IF(NOdeIdx == 14) THEN !Local node 14 is surrounded with node 13 and 15.
-
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(13)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(14)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(15)
+              ELSE IF(node_idx == 14) THEN !Local node 14 is surrounded with node 13 and 15.
+
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(13)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-              ELSE IF(NOdeIdx == 15) THEN !Local node 15 is surrounded with node 5 and 16.
-
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(14)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(15)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(16)
+              ELSE IF(node_idx == 15) THEN !Local node 15 is surrounded with node 5 and 16.
+
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(14)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-              ELSE IF(NOdeIdx == 16) THEN !Local node 16 is surrounded with node 15 and 12.
-
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(15)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(16)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(12)
+              ELSE IF(node_idx == 16) THEN !Local node 16 is surrounded with node 15 and 12.
+
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(15)
+                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
+
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(12)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
               END  IF
 
-            END  IF !NOdeIdx
+            END  IF !node_idx
 
           END DO!DO column = 1, SIZE(CoupledMesh%ConnectivityMatrix,2)
 
@@ -11693,8 +11764,8 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT)        :: ERROR !<The error string
 
     ! Local variables
-    INTEGER(INTG)                            :: AdjacentNode,ElementIdx,MeshNUmberOfNOdes, &
-      & MeshNOde,NOdeIdx,NUMBER_OF_SURROUNDING_NODES
+    INTEGER(INTG)                            :: AdjacentNode,element_idx,MeshNUmberOfNOdes, &
+      & MeshNOde,node_idx,NUMBER_OF_SURROUNDING_NODES
     TYPE(MeshNodesType), pointer             :: meshNOdes
     INTEGER(INTG), ALLOCATABLE               :: SURROUNDING_NODES(:)
     TYPE(LIST_PTR_TYPE), ALLOCATABLE         :: SURROUNDING_NODE_LIST(:)
@@ -11717,242 +11788,242 @@ CONTAINS
         CALL LIST_INITIAL_SIZE_SET(SURROUNDING_NODE_LIST(MeshNOde)%PTR,MeshnumberOfNodes, ERR,ERROR,*999)
         CALL LIST_CREATE_FINISH(SURROUNDING_NODE_LIST(MeshNOde)%PTR,ERR,ERROR,*999)
 
-        DO ElementIdx = 1, SIZE(MESH%TOPOLOGY(1)%ptr%Elements%Elements,1)
+        DO element_idx = 1, SIZE(MESH%TOPOLOGY(1)%ptr%Elements%Elements,1)
 
-          DO NOdeIdx = 1, 27
+          DO node_idx = 1, 27
 
-            IF(MESH%TOPOLOGY(1)%ptr%Elements%Elements(ElementIdx)%GLOBAL_ELEMENT_NODES(NOdeIdx) == MeshNOde) THEN
+            IF(MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(node_idx) == MeshNOde) THEN
 
-              IF(NOdeIdx == 1) THEN
+              IF(node_idx == 1) THEN
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(2)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(2)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(4)
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(4)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(10)
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(10)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-              ELSE IF(NOdeIdx == 2) THEN
+              ELSE IF(node_idx == 2) THEN
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(1)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(1)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(3)
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(3)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-              ELSE IF(NOdeIdx == 3) THEN
+              ELSE IF(node_idx == 3) THEN
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(2)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(2)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(6)
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(6)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(12)
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(12)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-              ELSE IF(NOdeIdx == 4) THEN
+              ELSE IF(node_idx == 4) THEN
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(1)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(1)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(7)
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(7)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-              ELSE IF(NOdeIdx == 5) THEN
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(5)
+              ELSE IF(node_idx == 5) THEN
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(5)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-              ELSE IF(NOdeIdx == 6) THEN
+              ELSE IF(node_idx == 6) THEN
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(3)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(3)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(9)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(9)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-              ELSE IF(NOdeIdx == 7) THEN
+              ELSE IF(node_idx == 7) THEN
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(4)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(4)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(8)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(8)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(16)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(16)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-              ELSE IF(NOdeIdx == 8) THEN
+              ELSE IF(node_idx == 8) THEN
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(7)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(7)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(9)
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(9)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-              ELSE IF(NOdeIdx == 9) THEN
+              ELSE IF(node_idx == 9) THEN
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(6)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(6)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(8)
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(8)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(18)
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(18)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-              ELSE IF(NOdeIdx == 10) THEN
+              ELSE IF(node_idx == 10) THEN
 
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(1)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(1)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(19)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(19)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-              ELSE IF(NOdeIdx == 11) THEN
+              ELSE IF(node_idx == 11) THEN
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(11)
-                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
-
-
-              ELSE IF(NOdeIdx == 12) THEN
-
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(3)
-                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
-
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(21)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(11)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
 
-              ELSE IF(NOdeIdx == 13) THEN
+              ELSE IF(node_idx == 12) THEN
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(13)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(3)
+                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
+
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(21)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
 
-              ELSE IF(NOdeIdx == 14) THEN
+              ELSE IF(node_idx == 13) THEN
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(14)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(13)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
 
-              ELSE IF(NOdeIdx == 15) THEN
+              ELSE IF(node_idx == 14) THEN
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(15)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(14)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
 
-              ELSE IF(NOdeIdx == 16) THEN
+              ELSE IF(node_idx == 15) THEN
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(7)
-                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
-
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(25)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(15)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
 
-              ELSE IF(NOdeIdx == 17) THEN
+              ELSE IF(node_idx == 16) THEN
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(17)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(7)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-              ELSE IF(NOdeIdx == 18) THEN
-
-
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(9)
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(25)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
 
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(27)
+              ELSE IF(node_idx == 17) THEN
+
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(17)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-              ELSE IF(NOdeIdx == 19) THEN
+              ELSE IF(node_idx == 18) THEN
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(20)
-                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(22)
-                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
-
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(10)
-                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
-
-              ELSE IF(NOdeIdx == 20) THEN
-
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(19)
-                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
-
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(21)
-                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
-
-              ELSE IF(NOdeIdx == 21) THEN
-
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(12)
-                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
-
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(20)
-                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
-
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(24)
-                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
-
-              ELSE IF(NOdeIdx == 22) THEN
-
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(19)
-                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
-
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(25)
-                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
-
-              ELSE IF(NOdeIdx == 23) THEN
-
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(23)
-                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
-
-              ELSE IF(NOdeIdx == 24) THEN
-
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(21)
-                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
-
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(27)
-                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
-
-              ELSE IF(NOdeIdx == 25) THEN
-
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(22)
-                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
-
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(26)
-                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
-
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(16)
-                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
-
-              ELSE IF(NOdeIdx == 26) THEN
-
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(25)
-                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
-
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(27)
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(9)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
 
-              ELSE IF(NOdeIdx == 27) THEN
-
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(24)
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(27)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(26)
+              ELSE IF(node_idx == 19) THEN
+
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(20)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(18)
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(22)
+                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
+
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(10)
+                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
+
+              ELSE IF(node_idx == 20) THEN
+
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(19)
+                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
+
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(21)
+                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
+
+              ELSE IF(node_idx == 21) THEN
+
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(12)
+                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
+
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(20)
+                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
+
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(24)
+                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
+
+              ELSE IF(node_idx == 22) THEN
+
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(19)
+                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
+
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(25)
+                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
+
+              ELSE IF(node_idx == 23) THEN
+
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(23)
+                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
+
+              ELSE IF(node_idx == 24) THEN
+
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(21)
+                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
+
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(27)
+                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
+
+              ELSE IF(node_idx == 25) THEN
+
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(22)
+                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
+
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(26)
+                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
+
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(16)
+                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
+
+              ELSE IF(node_idx == 26) THEN
+
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(25)
+                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
+
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(27)
+                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
+
+
+              ELSE IF(node_idx == 27) THEN
+
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(24)
+                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
+
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(26)
+                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
+
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(18)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
               END IF
-            END IF !NOdeIdx
+            END IF !node_idx
           END DO!DO column = 1, SIZE(CoupledMesh%ConnectivityMatrix,2)
         END  DO ! DO row = 1, SIZE(CoupledMesh%ConnectivityMatrix,1)
 
@@ -11993,8 +12064,8 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT)        :: ERROR !<The error string
 
     ! Local variables
-    INTEGER(INTG)                            :: AdjacentNode,ElementIdx,MeshNUmberOfNOdes, &
-      & MeshNOde,NOdeIdx,NUMBER_OF_SURROUNDING_NODES
+    INTEGER(INTG)                            :: AdjacentNode,element_idx,MeshNUmberOfNOdes, &
+      & MeshNOde,node_idx,NUMBER_OF_SURROUNDING_NODES
     TYPE(MeshNodesType), pointer             :: meshNOdes
     INTEGER(INTG), ALLOCATABLE               :: SURROUNDING_NODES(:)
     TYPE(LIST_PTR_TYPE), ALLOCATABLE         :: SURROUNDING_NODE_LIST(:)
@@ -12017,102 +12088,102 @@ CONTAINS
         CALL LIST_INITIAL_SIZE_SET(SURROUNDING_NODE_LIST(MeshNOde)%PTR,MeshnumberOfNodes, ERR,ERROR,*999)
         CALL LIST_CREATE_FINISH(SURROUNDING_NODE_LIST(MeshNOde)%PTR,ERR,ERROR,*999)
 
-        DO ElementIdx = 1, SIZE(MESH%TOPOLOGY(1)%ptr%Elements%Elements,1)
-          DO NOdeIdx = 1, 8
-            IF(MESH%TOPOLOGY(1)%ptr%Elements%Elements(ElementIdx)%GLOBAL_ELEMENT_NODES(NOdeIdx) == MeshNOde) THEN
-              IF(NOdeIdx == 1) THEN
+        DO element_idx = 1, SIZE(MESH%TOPOLOGY(1)%ptr%Elements%Elements,1)
+          DO node_idx = 1, 8
+            IF(MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(node_idx) == MeshNOde) THEN
+              IF(node_idx == 1) THEN
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(2)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(2)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(3)
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(3)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(5)
-                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
-
-
-              ELSE IF(NOdeIdx == 2) THEN
-
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(1)
-                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
-
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(4)
-                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
-
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(6)
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(5)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
 
-              ELSE IF(NOdeIdx == 3) THEN
+              ELSE IF(node_idx == 2) THEN
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(1)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(1)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(4)
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(4)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(7)
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(6)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
 
-              ELSE IF(NOdeIdx == 4) THEN
+              ELSE IF(node_idx == 3) THEN
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(2)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(1)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(3)
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(4)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(8)
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(7)
+                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
+
+
+              ELSE IF(node_idx == 4) THEN
+
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(2)
+                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
+
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(3)
+                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
+
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(8)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
 
                 EXIT
 
-              ELSE IF(NOdeIdx == 5) THEN
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(1)
+              ELSE IF(node_idx == 5) THEN
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(1)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(6)
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(6)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(7)
-                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
-
-
-              ELSE IF(NOdeIdx == 6) THEN
-
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(5)
-                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
-
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(8)
-                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
-
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(2)
-                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
-
-              ELSE IF(NOdeIdx == 7) THEN
-
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(5)
-                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
-
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(8)
-                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
-
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(3)
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(7)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
 
-              ELSE IF(NOdeIdx == 8) THEN
+              ELSE IF(node_idx == 6) THEN
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(4)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(5)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(6)
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(8)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(7)
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(2)
+                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
+
+              ELSE IF(node_idx == 7) THEN
+
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(5)
+                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
+
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(8)
+                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
+
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(3)
+                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
+
+
+              ELSE IF(node_idx == 8) THEN
+
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(4)
+                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
+
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(6)
+                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
+
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(7)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
               END  IF
@@ -12143,12 +12214,12 @@ CONTAINS
     EXITS("GET_SURROUNDING_NODES_LINEAR_HEXAHEDRAL_MESH.")
     RETURN
 999 ERRORSEXITS("GET_SURROUNDING_NODES..HEXAHEDRAL_MESH.",ERR,ERROR)
-   RETURN 1
+    RETURN 1
 
   END SUBROUTINE GET_SURROUNDING_NODES_LINEAR_HEXAHEDRAL_MESH
  !====================================================================================================
  !> Calculates surroudingNodes data structures for cubic line mesh.
- SUBROUTINE GET_SURROUNDING_NODES_CUBIC_LINE_MESH(MESH, ERR, error, *)
+  SUBROUTINE GET_SURROUNDING_NODES_CUBIC_LINE_MESH(MESH, ERR, error, *)
 
     ! Arguments
     TYPE(MESH_TYPE), POINTER, INTENT(INOUT)  :: MESH !!<A pointer to the mesh to calculate grap information for.
@@ -12156,8 +12227,8 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT)        :: ERROR !<The error string
 
     ! Local variables
-    INTEGER(INTG)                            :: AdjacentNode,ElementIdx,MeshNUmberOfNOdes, &
-      & MeshNOde,NOdeIdx,NUMBER_OF_SURROUNDING_NODES
+    INTEGER(INTG)                            :: AdjacentNode,element_idx,MeshNUmberOfNOdes, &
+      & MeshNOde,node_idx,NUMBER_OF_SURROUNDING_NODES
     TYPE(MeshNodesType), pointer             :: meshNOdes
     INTEGER(INTG), ALLOCATABLE               :: SURROUNDING_NODES(:)
     TYPE(LIST_PTR_TYPE), ALLOCATABLE         :: SURROUNDING_NODE_LIST(:)
@@ -12180,34 +12251,33 @@ CONTAINS
         CALL LIST_INITIAL_SIZE_SET(SURROUNDING_NODE_LIST(MeshNOde)%PTR,MeshnumberOfNodes, ERR,ERROR,*999)
         CALL LIST_CREATE_FINISH(SURROUNDING_NODE_LIST(MeshNOde)%PTR,ERR,ERROR,*999)
 
-        DO ElementIdx = 1, SIZE(MESH%TOPOLOGY(1)%ptr%Elements%Elements,1)
-          DO NOdeIdx = 1, 4
-            IF(MESH%TOPOLOGY(1)%ptr%Elements%Elements(ElementIdx)%GLOBAL_ELEMENT_NODES(NOdeIdx) == MeshNOde) THEN
-              IF(NOdeIdx == 1 ) THEN
+        DO element_idx = 1, SIZE(MESH%TOPOLOGY(1)%ptr%Elements%Elements,1)
+          DO node_idx = 1, 4
+            IF(MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(node_idx) == MeshNOde) THEN
+              IF(node_idx == 1 ) THEN
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(2)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(2)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-              ELSE IF(NOdeIdx == 2) THEN
+              ELSE IF(node_idx == 2) THEN
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(1)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(1)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(3)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(3)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
+              ELSE IF(node_idx == 3) THEN
 
-              ELSE IF(NOdeIdx == 3) THEN
-
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(2)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(2)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(4)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(4)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-              ELSE IF(NOdeIdx == 4) THEN
+              ELSE IF(node_idx == 4) THEN
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(3)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(3)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
               END  IF
@@ -12220,8 +12290,7 @@ CONTAINS
           & NUMBER_OF_SURROUNDING_NODES, SURROUNDING_NODES, ERR,ERROR,*999)
 
         IF(ALLOCATED(MESH%TOPOLOGY(1)%ptr%Nodes%Nodes(MeshNOde)%surroundingNodes)) &
-          DEALLOCATE(MESH%TOPOLOGY(1)%ptr%Nodes%Nodes(MeshNOde)%surroundingNodes)
-
+          & DEALLOCATE(MESH%TOPOLOGY(1)%ptr%Nodes%Nodes(MeshNOde)%surroundingNodes)
 
         ALLOCATE(MESH%TOPOLOGY(1)%ptr%Nodes%Nodes(MeshNOde)%surroundingNodes(NUMBER_OF_SURROUNDING_NODES), STAT= ERR)
         IF(ERR/=0) CALL FlagError("Could not allocate surrounding node data structure",ERR,ERROR,*999)
@@ -12235,10 +12304,10 @@ CONTAINS
     ELSE
       CALL FlagError("Mesh is not associated.",ERR,ERROR,*999)
     END IF
-   EXITS("GET_SURROUNDING_NODES_CUBIC_LINE_MESH.")
-   RETURN
+    EXITS("GET_SURROUNDING_NODES_CUBIC_LINE_MESH.")
+    RETURN
 999 ERRORSEXITS("GET_SURROUNDING..CUBIC_LINE_MESH.",ERR,ERROR)
-   RETURN 1
+    RETURN 1
 
   END SUBROUTINE GET_SURROUNDING_NODES_CUBIC_LINE_MESH
  !=====================================================================================================
@@ -12251,8 +12320,8 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT)        :: ERROR !<The error string
 
     ! Local variables
-    INTEGER(INTG)                            :: AdjacentNode,ElementIdx,MeshNUmberOfNOdes, &
-      & MeshNOde,NOdeIdx,NUMBER_OF_SURROUNDING_NODES
+    INTEGER(INTG)                            :: AdjacentNode,element_idx,MeshNUmberOfNOdes, &
+      & MeshNOde,node_idx,NUMBER_OF_SURROUNDING_NODES
     TYPE(MeshNodesType), pointer             :: meshNOdes
     INTEGER(INTG), ALLOCATABLE               :: SURROUNDING_NODES(:)
     TYPE(LIST_PTR_TYPE), ALLOCATABLE         :: SURROUNDING_NODE_LIST(:)
@@ -12273,17 +12342,17 @@ CONTAINS
         CALL LIST_INITIAL_SIZE_SET(SURROUNDING_NODE_LIST(MeshNOde)%PTR,MeshnumberOfNodes, ERR,ERROR,*999)
         CALL LIST_CREATE_FINISH(SURROUNDING_NODE_LIST(MeshNOde)%PTR,ERR,ERROR,*999)
 
-        DO ElementIdx = 1, SIZE(MESH%TOPOLOGY(1)%ptr%Elements%Elements,1)
-          DO NOdeIdx = 1, 2
-            IF(MESH%TOPOLOGY(1)%ptr%Elements%Elements(ElementIdx)%GLOBAL_ELEMENT_NODES(NOdeIdx) == MeshNOde) THEN
+        DO element_idx = 1, SIZE(MESH%TOPOLOGY(1)%ptr%Elements%Elements,1)
+          DO node_idx = 1, 2
+            IF(MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(node_idx) == MeshNOde) THEN
 
-              IF(NOdeIdx == 1 ) THEN
+              IF(node_idx == 1 ) THEN
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(2)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(2)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
-              ELSE IF(NOdeIdx == 2) THEN
+              ELSE IF(node_idx == 2) THEN
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(1)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(1)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
               END  IF
             END  IF
@@ -12307,13 +12376,13 @@ CONTAINS
         DEALLOCATE(SURROUNDING_NODES)
 
       END DO ! meshnode
-      ELSE
-        CALL FlagError("Mesh is not associated.",ERR,ERROR,*999)
-      END IF
-   EXITS("GET_SURROUNDING_NODES_LINEAR_LINE_MESH.")
-   RETURN
+    ELSE
+      CALL FlagError("Mesh is not associated.",ERR,ERROR,*999)
+    END IF
+    EXITS("GET_SURROUNDING_NODES_LINEAR_LINE_MESH.")
+    RETURN
 999 ERRORSEXITS("GET_SURROUNDING_NODES..LINE_MESH.",ERR,ERROR)
-   RETURN 1
+    RETURN 1
 
   END SUBROUTINE GET_SURROUNDING_NODES_LINEAR_LINE_MESH
 
@@ -12327,8 +12396,8 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT)        :: ERROR !<The error string
 
     ! Local variables
-    INTEGER(INTG)                            :: AdjacentNode,ElementIdx,MeshNUmberOfNOdes, &
-                                                & MeshNOde,NOdeIdx,NUMBER_OF_SURROUNDING_NODES
+    INTEGER(INTG)                            :: AdjacentNode,element_idx,MeshNUmberOfNOdes, &
+                                                & MeshNOde,node_idx,NUMBER_OF_SURROUNDING_NODES
     TYPE(MeshNodesType), pointer             :: meshNOdes
     INTEGER(INTG), ALLOCATABLE               :: SURROUNDING_NODES(:)
     TYPE(LIST_PTR_TYPE), ALLOCATABLE         :: SURROUNDING_NODE_LIST(:)
@@ -12352,25 +12421,25 @@ CONTAINS
         CALL LIST_INITIAL_SIZE_SET(SURROUNDING_NODE_LIST(MeshNOde)%PTR,MeshnumberOfNodes, ERR,ERROR,*999)
         CALL LIST_CREATE_FINISH(SURROUNDING_NODE_LIST(MeshNOde)%PTR,ERR,ERROR,*999)
 
-        DO ElementIdx = 1, SIZE(MESH%TOPOLOGY(1)%ptr%Elements%Elements,1)
-          DO NOdeIdx = 1, 3
-            IF(MESH%TOPOLOGY(1)%ptr%Elements%Elements(ElementIdx)%GLOBAL_ELEMENT_NODES(NOdeIdx) == MeshNOde) THEN
-              IF(NOdeIdx == 1 ) THEN
+        DO element_idx = 1, SIZE(MESH%TOPOLOGY(1)%ptr%Elements%Elements,1)
+          DO node_idx = 1, 3
+            IF(MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(node_idx) == MeshNOde) THEN
+              IF(node_idx == 1 ) THEN
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(2)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(2)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-              ELSE IF(NOdeIdx == 2) THEN
+              ELSE IF(node_idx == 2) THEN
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(1)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(1)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(3)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(3)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-              ELSE IF(NOdeIdx == 3) THEN
+              ELSE IF(node_idx == 3) THEN
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(2)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(2)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
               END  IF
             END  IF
@@ -12382,7 +12451,7 @@ CONTAINS
           & NUMBER_OF_SURROUNDING_NODES, SURROUNDING_NODES, ERR,ERROR,*999)
 
         IF(ALLOCATED(MESH%TOPOLOGY(1)%ptr%Nodes%Nodes(MeshNOde)%surroundingNodes)) &
-          DEALLOCATE(MESH%TOPOLOGY(1)%ptr%Nodes%Nodes(MeshNOde)%surroundingNodes)
+          & DEALLOCATE(MESH%TOPOLOGY(1)%ptr%Nodes%Nodes(MeshNOde)%surroundingNodes)
 
 
         ALLOCATE(MESH%TOPOLOGY(1)%ptr%Nodes%Nodes(MeshNOde)%surroundingNodes(NUMBER_OF_SURROUNDING_NODES), STAT= ERR)
@@ -12395,13 +12464,13 @@ CONTAINS
 
       END DO ! meshnode
       RETURN
-      ELSE
-        CALL FlagError("Mesh is not associated.",ERR,ERROR,*999)
-      END IF
-   EXITS("GET_SURROUNDING_NODES_QUADRATIC_LINE_MESH.")
-   RETURN
+    ELSE
+      CALL FlagError("Mesh is not associated.",ERR,ERROR,*999)
+    END IF
+    EXITS("GET_SURROUNDING_NODES_QUADRATIC_LINE_MESH.")
+    RETURN
 999 ERRORSEXITS("GET_SURROUNDING_NODES..LINE_MESH.",ERR,ERROR)
-   RETURN 1
+    RETURN 1
 
   END SUBROUTINE GET_SURROUNDING_NODES_QUADRATIC_LINE_MESH
 
@@ -12416,8 +12485,8 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT)        :: ERROR !<The error string
 
     ! Local variables
-    INTEGER(INTG)                            :: AdjacentNode,ElementIdx,MeshNUmberOfNOdes, &
-      & MeshNOde,NOdeIdx,NUMBER_OF_SURROUNDING_NODES
+    INTEGER(INTG)                            :: AdjacentNode,element_idx,MeshNUmberOfNOdes, &
+      & MeshNOde,node_idx,NUMBER_OF_SURROUNDING_NODES
     TYPE(MeshNodesType), pointer             :: meshNOdes
     INTEGER(INTG), ALLOCATABLE               :: SURROUNDING_NODES(:)
     TYPE(LIST_PTR_TYPE), ALLOCATABLE         :: SURROUNDING_NODE_LIST(:)
@@ -12440,56 +12509,56 @@ CONTAINS
         CALL LIST_INITIAL_SIZE_SET(SURROUNDING_NODE_LIST(MeshNOde)%PTR,MeshnumberOfNodes, ERR,ERROR,*999)
         CALL LIST_CREATE_FINISH(SURROUNDING_NODE_LIST(MeshNOde)%PTR,ERR,ERROR,*999)
 
-        DO ElementIdx = 1, SIZE(MESH%TOPOLOGY(1)%ptr%Elements%Elements,1)
-          DO NOdeIdx = 1, 6
-            IF(MESH%TOPOLOGY(1)%ptr%Elements%Elements(ElementIdx)%GLOBAL_ELEMENT_NODES(NOdeIdx) == MeshNOde) THEN
-              IF(NOdeIdx == 1 ) THEN
+        DO element_idx = 1, SIZE(MESH%TOPOLOGY(1)%ptr%Elements%Elements,1)
+          DO node_idx = 1, 6
+            IF(MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(node_idx) == MeshNOde) THEN
+              IF(node_idx == 1 ) THEN
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(4)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(4)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(6)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(6)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-              ELSE IF(NOdeIdx == 2) THEN
+              ELSE IF(node_idx == 2) THEN
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(4)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(4)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(5)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(5)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-              ELSE IF(NOdeIdx == 3) THEN
+              ELSE IF(node_idx == 3) THEN
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(5)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(5)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(6)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(6)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-              ELSE IF(NOdeIdx == 4) THEN
+              ELSE IF(node_idx == 4) THEN
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(1)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(1)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(2)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(2)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-              ELSE IF(NOdeIdx == 5) THEN
+              ELSE IF(node_idx == 5) THEN
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(2)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(2)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(3)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(3)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
 
-              ELSE IF(NOdeIdx == 6) THEN
+              ELSE IF(node_idx == 6) THEN
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(3)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(3)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(1)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(1)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
               END  IF
@@ -12515,13 +12584,13 @@ CONTAINS
 
 
       END DO ! meshnode
-      ELSE
-        CALL FlagError("Mesh is not associated.",ERR,ERROR,*999)
-      END IF
-   EXITS("GET_SURROUNDING_NODES_QUADRATIC_TRIANGULAR_MESH.")
-   RETURN
+    ELSE
+      CALL FlagError("Mesh is not associated.",ERR,ERROR,*999)
+    END IF
+    EXITS("GET_SURROUNDING_NODES_QUADRATIC_TRIANGULAR_MESH.")
+    RETURN
 999 ERRORSEXITS("GET_SURROUNDING_NODES..TRIANGULAR_MESH.",ERR,ERROR)
-   RETURN 1
+    RETURN 1
 
   END SUBROUTINE GET_SURROUNDING_NODES_QUADRATIC_TRIANGULAR_MESH
 
@@ -12536,8 +12605,8 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT)        :: ERROR !<The error string
 
     ! Local variables
-    INTEGER(INTG)                            :: AdjacentNode,ElementIdx,MeshNUmberOfNOdes, &
-      & MeshNOde,NOdeIdx,NUMBER_OF_SURROUNDING_NODES
+    INTEGER(INTG)                            :: AdjacentNode,element_idx,MeshNUmberOfNOdes, &
+      & MeshNOde,node_idx,NUMBER_OF_SURROUNDING_NODES
     TYPE(MeshNodesType), pointer             :: meshNOdes
     INTEGER(INTG), ALLOCATABLE               :: SURROUNDING_NODES(:)
     TYPE(LIST_PTR_TYPE), ALLOCATABLE         :: SURROUNDING_NODE_LIST(:)
@@ -12563,27 +12632,27 @@ CONTAINS
         CALL LIST_INITIAL_SIZE_SET(SURROUNDING_NODE_LIST(MeshNOde)%PTR,MeshnumberOfNodes,ERR,ERROR,*999)
         CALL LIST_CREATE_FINISH(SURROUNDING_NODE_LIST(MeshNOde)%PTR,ERR,ERROR,*999)
 
-        DO ElementIdx = 1, SIZE(MESH%TOPOLOGY(1)%ptr%Elements%Elements,1)
+        DO element_idx = 1, SIZE(MESH%TOPOLOGY(1)%ptr%Elements%Elements,1)
 
-          DO NOdeIdx = 1, 4
+          DO node_idx = 1, 4
 
-            IF(MESH%TOPOLOGY(1)%ptr%Elements%Elements(ElementIdx)%GLOBAL_ELEMENT_NODES(NOdeIdx) == MeshNOde) THEN
+            IF(MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(node_idx) == MeshNOde) THEN
 
-              IF(NOdeIdx == 1 .OR. NOdeIdx == 4) THEN
+              IF(node_idx == 1 .OR. node_idx == 4) THEN
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(2)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(2)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(3)
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(3)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
 
-              ELSE IF(NOdeIdx == 2 .OR. NOdeIdx == 3 ) THEN
+              ELSE IF(node_idx == 2 .OR. node_idx == 3 ) THEN
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(1)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(1)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(4)
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(4)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
               END  IF
@@ -12609,24 +12678,24 @@ CONTAINS
     ELSE
       CALL FlagError("Mesh is not associated.",ERR,ERROR,*999)
     END IF
-   EXITS("GET_SURROUNDING_NODES_LINEAR_QUADRILATERAL_MESH.")
-   RETURN
+    EXITS("GET_SURROUNDING_NODES_LINEAR_QUADRILATERAL_MESH.")
+    RETURN
 999 ERRORSEXITS("GET_SURROUNDING_LINEAR..QUADRILATERAL_MESH",ERR,ERROR)
-   RETURN 1
+    RETURN 1
 
   END SUBROUTINE GET_SURROUNDING_NODES_LINEAR_QUADRILATERAL_MESH
 
   !======================================================================================================================================
  !> Calculates surroudingNodes data structures for quadratic terahedral mesh.
-   SUBROUTINE GET_SURROUNDING_NODES_QUADRATIC_TETRAHEDRAL_MESH(MESH, ERR, error, *)
+  SUBROUTINE GET_SURROUNDING_NODES_QUADRATIC_TETRAHEDRAL_MESH(MESH, ERR, error, *)
 
     ! Arguments
     TYPE(MESH_TYPE), POINTER, INTENT(INOUT)  :: MESH !<A pointer to the mesh to calculate grap information for.
     INTEGER(INTG), INTENT(OUT)               :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT)        :: ERROR !<The error string
     ! Local variables
-    INTEGER(INTG)                            :: AdjacentNode,ElementIdx,MeshNUmberOfNOdes, &
-      & MeshNOde,NOdeIdx,NUMBER_OF_SURROUNDING_NODES
+    INTEGER(INTG)                            :: AdjacentNode,element_idx,MeshNUmberOfNOdes, &
+      & MeshNOde,node_idx,NUMBER_OF_SURROUNDING_NODES
     TYPE(MeshNodesType), pointer             :: meshNOdes
     INTEGER(INTG), ALLOCATABLE               :: SURROUNDING_NODES(:)
     TYPE(LIST_PTR_TYPE), ALLOCATABLE         :: SURROUNDING_NODE_LIST(:)
@@ -12653,108 +12722,108 @@ CONTAINS
         CALL LIST_INITIAL_SIZE_SET(SURROUNDING_NODE_LIST(MeshNOde)%PTR,MeshnumberOfNodes, ERR,ERROR,*999)
         CALL LIST_CREATE_FINISH(SURROUNDING_NODE_LIST(MeshNOde)%PTR,ERR,ERROR,*999)
 
-        DO ElementIdx = 1, SIZE(MESH%TOPOLOGY(1)%ptr%Elements%Elements,1)
+        DO element_idx = 1, SIZE(MESH%TOPOLOGY(1)%ptr%Elements%Elements,1)
 
-          DO NOdeIdx = 1, 10
+          DO node_idx = 1, 10
 
-            IF(MESH%TOPOLOGY(1)%ptr%Elements%Elements(ElementIdx)%GLOBAL_ELEMENT_NODES(NOdeIdx) == MeshNOde) THEN
+            IF(MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(node_idx) == MeshNOde) THEN
 
-              IF(NOdeIdx == 1) THEN
+              IF(node_idx == 1) THEN
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(5)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(5)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(6)
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(6)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(7)
-                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
-
-
-              ELSE IF(NOdeIdx == 2 ) THEN
-
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(5)
-                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
-
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(8)
-                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
-
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(10)
-                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
-
-              ELSE IF(NOdeIdx == 3 ) THEN
-
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(9)
-                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
-
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(8)
-                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
-
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(6)
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(7)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
 
-              ELSE IF(NOdeIdx == 4 ) THEN
+              ELSE IF(node_idx == 2 ) THEN
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(9)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(5)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(7)
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(8)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(10)
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(10)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-              ELSE IF(NOdeIdx == 5 ) THEN
+              ELSE IF(node_idx == 3 ) THEN
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(1)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(9)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(2)
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(8)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-
-              ELSE IF(NOdeIdx == 6 ) THEN
-
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(1)
-                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
-
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(3)
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(6)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
 
-              ELSE IF(NOdeIdx == 7 ) THEN
+              ELSE IF(node_idx == 4 ) THEN
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(1)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(9)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(4)
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(7)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-              ELSE IF(NOdeIdx == 8 ) THEN
-
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(2)
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(10)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(3)
+              ELSE IF(node_idx == 5 ) THEN
+
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(1)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-
-              ELSE IF(NOdeIdx == 9 ) THEN
-
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(4)
-                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
-
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(3)
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(2)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
 
-              ELSE IF(NOdeIdx == 10 ) THEN
+              ELSE IF(node_idx == 6 ) THEN
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(4)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(1)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(2)
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(3)
+                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
+
+
+              ELSE IF(node_idx == 7 ) THEN
+
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(1)
+                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
+
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(4)
+                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
+
+              ELSE IF(node_idx == 8 ) THEN
+
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(2)
+                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
+
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(3)
+                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
+
+
+              ELSE IF(node_idx == 9 ) THEN
+
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(4)
+                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
+
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(3)
+                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
+
+
+              ELSE IF(node_idx == 10 ) THEN
+
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(4)
+                CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
+
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(2)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
               END  IF
@@ -12782,17 +12851,17 @@ CONTAINS
     ELSE
       CALL FlagError("Mesh is not associated.",ERR,ERROR,*999)
     END IF
-   EXITS("GET_SURROUNDING_NODES_QUADRATIC_TETRAHEDRAL_MESH.")
-   RETURN
+    EXITS("GET_SURROUNDING_NODES_QUADRATIC_TETRAHEDRAL_MESH.")
+    RETURN
 999 ERRORSEXITS("GET_SURROUNDING_NODES..TETRAHEDRAL_MESH.",ERR,ERROR)
-   RETURN 1
+    RETURN 1
 
   END SUBROUTINE GET_SURROUNDING_NODES_QUADRATIC_TETRAHEDRAL_MESH
 
 
   !======================================================================================================================================
  !> Calculates surroudingNodes data structures for linear terahedral mesh.
-   SUBROUTINE GET_SURROUNDING_NODES_LINEAR_TETRAHEDRAL_MESH(MESH, ERR, error, *)
+  SUBROUTINE GET_SURROUNDING_NODES_LINEAR_TETRAHEDRAL_MESH(MESH, ERR, error, *)
 
     ! Arguments
     TYPE(MESH_TYPE), POINTER, INTENT(INOUT)  :: MESH !<A pointer to the mesh to calculate grap information for.
@@ -12800,8 +12869,8 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT)        :: ERROR !<The error string
 
     ! Local variables
-    INTEGER(INTG)                            :: AdjacentNode,ElementIdx,MeshNUmberOfNOdes, &
-      & MeshNOde,NOdeIdx,NUMBER_OF_SURROUNDING_NODES
+    INTEGER(INTG)                            :: AdjacentNode,element_idx,MeshNUmberOfNOdes, &
+      & MeshNOde,node_idx,NUMBER_OF_SURROUNDING_NODES
     TYPE(MeshNodesType), pointer             :: meshNOdes
     INTEGER(INTG), ALLOCATABLE               :: SURROUNDING_NODES(:)
     TYPE(LIST_PTR_TYPE), ALLOCATABLE         :: SURROUNDING_NODE_LIST(:)
@@ -12827,54 +12896,54 @@ CONTAINS
         CALL LIST_INITIAL_SIZE_SET(SURROUNDING_NODE_LIST(MeshNOde)%PTR,MeshnumberOfNodes, ERR,ERROR,*999)
         CALL LIST_CREATE_FINISH(SURROUNDING_NODE_LIST(MeshNOde)%PTR,ERR,ERROR,*999)
 
-        DO ElementIdx = 1, SIZE(MESH%TOPOLOGY(1)%ptr%Elements%Elements,1)
+        DO element_idx = 1, SIZE(MESH%TOPOLOGY(1)%ptr%Elements%Elements,1)
 
-          DO NOdeIdx = 1, 4
+          DO node_idx = 1, 4
 
-            IF(MESH%TOPOLOGY(1)%ptr%Elements%Elements(ElementIdx)%GLOBAL_ELEMENT_NODES(NOdeIdx) == MeshNOde) THEN
+            IF(MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(node_idx) == MeshNOde) THEN
 
-              IF(NOdeIdx == 1) THEN
+              IF(node_idx == 1) THEN
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(2)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(2)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(3)
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(3)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(4)
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(4)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-              ELSE IF(NOdeIdx == 2 ) THEN
+              ELSE IF(node_idx == 2 ) THEN
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(1)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(1)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(3)
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(3)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(4)
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(4)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-              ELSE IF(NOdeIdx == 3 ) THEN
+              ELSE IF(node_idx == 3 ) THEN
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(1)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(1)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(2)
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(2)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(4)
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(4)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-              ELSE IF(NOdeIdx == 4 ) THEN
+              ELSE IF(node_idx == 4 ) THEN
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(1)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(1)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(2)
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(2)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(3)
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(3)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
               END  IF
@@ -12906,10 +12975,10 @@ CONTAINS
     ELSE
       CALL FlagError("Mesh is not associated.",ERR,ERROR,*999)
     END IF
-   EXITS("GET_SURROUNDING_NODES_LINEAR_TETRAHEDRAL_MESH.")
-   RETURN
+    EXITS("GET_SURROUNDING_NODES_LINEAR_TETRAHEDRAL_MESH.")
+    RETURN
 999 ERRORSEXITS("GET_SURROUNDING_NODES..TETRAHEDRAL_MESH.",ERR,ERROR)
-   RETURN 1
+    RETURN 1
 
   END SUBROUTINE GET_SURROUNDING_NODES_LINEAR_TETRAHEDRAL_MESH
 
@@ -12923,8 +12992,8 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT)        :: ERROR !<The error string
 
     ! Local variables
-    INTEGER(INTG)                            :: AdjacentNode,ElementIdx,MeshNUmberOfNOdes, &
-      & MeshNOde,NOdeIdx,NUMBER_OF_SURROUNDING_NODES
+    INTEGER(INTG)                            :: AdjacentNode,element_idx,MeshNUmberOfNOdes, &
+      & MeshNOde,node_idx,NUMBER_OF_SURROUNDING_NODES
     TYPE(MeshNodesType), pointer             :: meshNOdes
     INTEGER(INTG), ALLOCATABLE               :: SURROUNDING_NODES(:)
     TYPE(LIST_PTR_TYPE), ALLOCATABLE         :: SURROUNDING_NODE_LIST(:)
@@ -12950,34 +13019,34 @@ CONTAINS
         CALL LIST_INITIAL_SIZE_SET(SURROUNDING_NODE_LIST(MeshNOde)%PTR,MeshnumberOfNodes, ERR,ERROR,*999)
         CALL LIST_CREATE_FINISH(SURROUNDING_NODE_LIST(MeshNOde)%PTR,ERR,ERROR,*999)
 
-        DO ElementIdx = 1, SIZE(MESH%TOPOLOGY(1)%ptr%Elements%Elements,1)
+        DO element_idx = 1, SIZE(MESH%TOPOLOGY(1)%ptr%Elements%Elements,1)
 
-          DO NOdeIdx = 1, 3
+          DO node_idx = 1, 3
 
-            IF(MESH%TOPOLOGY(1)%ptr%Elements%Elements(ElementIdx)%GLOBAL_ELEMENT_NODES(NOdeIdx) == MeshNOde) THEN
+            IF(MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(node_idx) == MeshNOde) THEN
 
-              IF(NOdeIdx == 1) THEN
+              IF(node_idx == 1) THEN
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(2)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(2)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(3)
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(3)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-              ELSE IF(NOdeIdx == 2) THEN
+              ELSE IF(node_idx == 2) THEN
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(1)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(1)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(3)
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(3)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-              ELSE IF(NOdeIdx == 3) THEN
+              ELSE IF(node_idx == 3) THEN
 
-                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(1)
+                AdjacentNode = MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(1)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
-                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(ELementIdx)%GLOBAL_ELEMENT_NODES(2)
+                AdjacentNode= MESH%TOPOLOGY(1)%ptr%Elements%Elements(element_idx)%GLOBAL_ELEMENT_NODES(2)
                 CALL LIST_ITEM_ADD(SURROUNDING_NODE_LIST(MeshNOde)%PTR,AdjacentNode,ERR,ERROR,*999)
 
               END  IF
@@ -13006,16 +13075,16 @@ CONTAINS
     ELSE
       CALL FlagError("Mesh is not associated.",ERR,ERROR,*999)
     END IF
-   EXITS("GET_SURROUNDING_NODES_LINEAR_TRIANGULAR_MESH.")
-   RETURN
+    EXITS("GET_SURROUNDING_NODES_LINEAR_TRIANGULAR_MESH.")
+    RETURN
 999 ERRORSEXITS("GET_SURROUNDING_NODES..TRIANGULAR_MESH.",ERR,ERROR)
-   RETURN 1
+    RETURN 1
 
   END SUBROUTINE GET_SURROUNDING_NODES_LINEAR_TRIANGULAR_MESH
 
 !========================================================================================================================
- !> This subroutine builds Adjncy and xadj arrays for vertex-based decomposition
- SUBROUTINE GET_ADJNCY_AND_XADJ(DECOMPOSITION,ERR,ERROR,*)
+  !> This subroutine builds Adjncy and xadj arrays for vertex-based decomposition
+  SUBROUTINE GET_ADJNCY_AND_XADJ(DECOMPOSITION,ERR,ERROR,*)
 
     !Argument variables
     TYPE(DECOMPOSITION_TYPE), POINTER :: DECOMPOSITION !<A pointer to the decomposition to calculate the node domains for.
@@ -13029,8 +13098,8 @@ CONTAINS
     ENTERS("GET_ADJNCY_AND_XADJ",ERR,ERROR,*999)
 
     IF(ASSOCIATED(DECOMPOSITION)) THEN
-      IF(ASSOCIATED(DECOMPOSITION%MESH)) THEN
-        MESH=>DECOMPOSITION%MESH
+      MESH=>DECOMPOSITION%MESH
+      IF(ASSOCIATED(MESH)) THEN
         IF(ASSOCIATED(MESH%TOPOLOGY)) THEN
 
           PROC_ID=COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR) ! fetch processor id
@@ -13061,7 +13130,7 @@ CONTAINS
 
             DECOMPOSITION%ADJNCY( &
               & counter: COUNTER+SIZE(MESH%TOPOLOGY(1)%ptr%Nodes%Nodes(vtx_dist_idx+1)%surroundingNodes)-1)= &
-                & MESH%TOPOLOGY(1)%ptr%Nodes%Nodes(vtx_dist_idx+1)%surroundingNodes
+              & MESH%TOPOLOGY(1)%ptr%Nodes%Nodes(vtx_dist_idx+1)%surroundingNodes
 
             counter= counter+ SIZE(MESH%TOPOLOGY(1)%ptr%Nodes%Nodes(vtx_dist_idx+1)%surroundingNodes,1)
 
@@ -13077,19 +13146,19 @@ CONTAINS
     ELSE
       CALL FlagError("Decomposition is not associated.",ERR,ERROR,*999)
     ENDIF
-   EXITS("GET_ADJNCY_AND_XADJ.")
-   RETURN
+    EXITS("GET_ADJNCY_AND_XADJ.")
+    RETURN
 999 ERRORSEXITS("GET_ADJNCY_AND_XADJ.",ERR,ERROR)
-   RETURN 1
+    RETURN 1
 
- END SUBROUTINE GET_ADJNCY_AND_XADJ
+  END SUBROUTINE GET_ADJNCY_AND_XADJ
 
 
 ! ===========================================================================================================================
  !> The following subroutine calculates the parameters related to vertex-based decomposition.
- SUBROUTINE DECOMPOSITION_NODE_BASED_DECOMPOSITION_PARAMETERS_SET(DECOMPOSITION,ERR,ERROR,*)
+  SUBROUTINE DECOMPOSITION_NODE_BASED_DECOMPOSITION_PARAMETERS_SET(DECOMPOSITION,ERR,ERROR,*)
 
-   !Argument variables
+    !Argument variables
     TYPE(DECOMPOSITION_TYPE), POINTER, INTENT(INOUT) :: DECOMPOSITION !<A pointer to the decomposition to calculate the node domains for.
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code.
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string.
@@ -13102,9 +13171,8 @@ CONTAINS
     ENTERS("DECOMPOSITION_NODE_BASED_DECOMPOSITION_PARAMETERS_SET",ERR,ERROR,*999)
 
     IF(ASSOCIATED(DECOMPOSITION)) THEN
+      MESH=>DECOMPOSITION%MESH
       IF(ASSOCIATED(DECOMPOSITION%MESH)) THEN
-        NULLIFY(MESH)
-        MESH=>DECOMPOSITION%MESH
         IF(ASSOCIATED(MESH%TOPOLOGY)) THEN
 
           PROC_ID=COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR) ! Fetches the processor id.
@@ -13115,7 +13183,6 @@ CONTAINS
           ! As initial partitioning assigning the whole domain to processor 0.
           DECOMPOSITION%NODE_DOMAIN = 0_INTG
 
-
           ALLOCATE(DECOMPOSITION%TPWGT(DECOMPOSITION%NUMBER_OF_CONSTRAINTS*DECOMPOSITION%NUMBER_OF_DOMAINS), STAT=ERR)
           IF(ERR/=0)  CALL FlagError("Could not allocate DECOMPOSITION%TPWGT data structure",ERR,ERROR,*999)
 
@@ -13124,7 +13191,6 @@ CONTAINS
 
           DECOMPOSITION%TPWGT = REAL(1./DECOMPOSITION%NUMBER_OF_DOMAINS,RP)
           DECOMPOSITION%UBVEC = 1.000001_RP
-
 
           ! Check if the sum of tpwgts for each constrain is equal to 1.
           ALLOCATE(SUM_OF_TPWGT(DECOMPOSITION%NUMBER_OF_CONSTRAINTS), STAT=ERR)
@@ -13149,7 +13215,6 @@ CONTAINS
             END IF !IF(ABS(SUM_OF_TPWGT(constraint_idx)-1) > 1E-5) THEN
           END DO !constraint_idx
 
-
           !Setting values of vtx_dist array
           ALLOCATE(DECOMPOSITION%VTX_DIST(0:DECOMPOSITION%NUMBER_OF_DOMAINS), STAT=ERR)
           IF(ERR==0) THEN  ! If not already allocated by the user.
@@ -13160,14 +13225,12 @@ CONTAINS
 
           ALLOCATE(DECOMPOSITION%XADJ(0:(DECOMPOSITION%VTX_DIST(PROC_ID+1)-DECOMPOSITION%VTX_DIST(PROC_ID))), STAT=ERR)
           IF(ERR==0) THEN  ! If not already allocated by the user.
-
             CALL GET_ADJNCY_AND_XADJ(DECOMPOSITION,ERR,error,*999)
-
           END IF
 
           ALLOCATE(DECOMPOSITION%NODE_WEIGHT_SET( &
             & 1:DECOMPOSITION%NUMBER_OF_CONSTRAINTS*(DECOMPOSITION%VTX_DIST(PROC_ID+1) &
-              & - DECOMPOSITION%VTX_DIST(PROC_ID))), STAT=ERR)
+            & - DECOMPOSITION%VTX_DIST(PROC_ID))), STAT=ERR)
           IF(ERR==0)  THEN ! If not already allocated by the user.
             DECOMPOSITION%NODE_WEIGHT_SET   = 1
           END IF
@@ -13187,8 +13250,8 @@ CONTAINS
     ELSE
       CALL FlagError("Decomposition is not associated.",ERR,ERROR,*999)
     ENDIF
-   EXITS("DECOMPOSITION_NODE_BASED_DECOMPOSITION_PARAMETERS_SET.")
-   RETURN
+    EXITS("DECOMPOSITION_NODE_BASED_DECOMPOSITION_PARAMETERS_SET.")
+    RETURN
 999 ERRORSEXITS("DECOMPOSITION_NODE_BASED...PARAMETERS_SET.",ERR,ERROR)
     RETURN 1
 
@@ -13212,28 +13275,31 @@ CONTAINS
 
     IF(ASSOCIATED(DECOMPOSITION)) THEN
 
-       MESH=>DECOMPOSITION%MESH
+      MESH=>DECOMPOSITION%MESH
+      IF(ASSOCIATED(MESH)) THEN
+        !Setting default values of vtx_dist array
+        IF(ALLOCATED(DECOMPOSITION%VTX_DIST)) DEALLOCATE(DECOMPOSITION%VTX_DIST)
+        ALLOCATE(DECOMPOSITION%VTX_DIST(0:DECOMPOSITION%NUMBER_OF_DOMAINS), STAT=ERR)
 
-       !Setting default values of vtx_dist array
-       IF(ALLOCATED(DECOMPOSITION%VTX_DIST)) DEALLOCATE(DECOMPOSITION%VTX_DIST)
-       ALLOCATE(DECOMPOSITION%VTX_DIST(0:DECOMPOSITION%NUMBER_OF_DOMAINS), STAT=ERR)
+        DECOMPOSITION%VTX_DIST(0)                               = 0
+        DECOMPOSITION%VTX_DIST(DECOMPOSITION%NUMBER_OF_DOMAINS) = MESH%TOPOLOGY(1)%PTR%NODES%NUmberOfNOdes
 
-       DECOMPOSITION%VTX_DIST(0)                               = 0
-       DECOMPOSITION%VTX_DIST(DECOMPOSITION%NUMBER_OF_DOMAINS) = MESH%TOPOLOGY(1)%PTR%NODES%NUmberOfNOdes
-
-       DO vtx_dist_idx = 1, DECOMPOSITION%NUMBER_OF_DOMAINS-1
+        DO vtx_dist_idx = 1, DECOMPOSITION%NUMBER_OF_DOMAINS-1
 
           DECOMPOSITION%VTX_DIST(vtx_dist_idx) =  DECOMPOSITION%VTX_DIST(vtx_dist_idx-1) + &
             & INT(MESH%TOPOLOGY(1)%PTR%NODES%NUmberOfNOdes/DECOMPOSITION%NUMBER_OF_DOMAINS, INTG)
 
-       END DO !vtx_dist_idx
+        END DO !vtx_dist_idx
+      ELSE
+        CALL FlagError("Mesh is not associated.",ERR,ERROR,*999)
+      ENDIF
     ELSE
       CALL FlagError("Decomposition is not associated.",ERR,ERROR,*999)
     ENDIF
-   EXITS("DECOMPOSITION_SET_DEFAULT_VTX_DIST.")
-   RETURN
+    EXITS("DECOMPOSITION_SET_DEFAULT_VTX_DIST.")
+    RETURN
 999 ERRORSEXITS("DECOMPOSITION_SET_DEFAULT_VTX_DIST.",ERR,ERROR)
-   RETURN 1
+    RETURN 1
 
   END SUBROUTINE DECOMPOSITION_SET_DEFAULT_VTX_DIST
 
@@ -13256,10 +13322,10 @@ CONTAINS
     ELSE
       CALL FlagError("Decomposition is not associated.",ERR,ERROR,*999)
     ENDIF
-   EXITS("DECOMPOSITION_VTX_DIST_SET.")
-   RETURN
+    EXITS("DECOMPOSITION_VTX_DIST_SET.")
+    RETURN
 999 ERRORSEXITS("DECOMPOSITION_VTX_DIST_SET.",ERR,ERROR)
-   RETURN 1
+    RETURN 1
 
   END SUBROUTINE DECOMPOSITION_VTX_DIST_SET
 ! ============================================================================================================================
@@ -13295,38 +13361,39 @@ CONTAINS
           & DECOMPOSITION%VTX_DIST(PROC_ID): &
           & DECOMPOSITION%VTX_DIST(PROC_ID+1)-1), COMPUTATIONAL_ENVIRONMENT%MPI_COMM)
 
-         DO proc_idx_receive = 0, DECOMPOSITION%NUMBER_OF_DOMAINS-1
+        DO proc_idx_receive = 0, DECOMPOSITION%NUMBER_OF_DOMAINS-1
 
-           IF(PROC_ID /= proc_idx_receive) THEN
+          IF(PROC_ID /= proc_idx_receive) THEN
 
-             CALL MPI_SEND(DECOMPOSITION%NODE_DOMAIN( &
-               & DECOMPOSITION%VTX_DIST(PROC_ID): &
-               & DECOMPOSITION%VTX_DIST(PROC_ID+1)-1), &
-               & SIZE(DECOMPOSITION%NODE_DOMAIN( &
-               & DECOMPOSITION%VTX_DIST(PROC_ID): &
-               & DECOMPOSITION%VTX_DIST(PROC_ID+1)-1)), &
-               & MPI_INT, proc_idx_receive, PROC_ID ,COMPUTATIONAL_ENVIRONMENT%MPI_COMM, ERR)
+            CALL MPI_SEND(DECOMPOSITION%NODE_DOMAIN( &
+              & DECOMPOSITION%VTX_DIST(PROC_ID): &
+              & DECOMPOSITION%VTX_DIST(PROC_ID+1)-1), &
+              & SIZE(DECOMPOSITION%NODE_DOMAIN( &
+              & DECOMPOSITION%VTX_DIST(PROC_ID): &
+              & DECOMPOSITION%VTX_DIST(PROC_ID+1)-1)), &
+              & MPI_INT, proc_idx_receive, PROC_ID ,COMPUTATIONAL_ENVIRONMENT%MPI_COMM, ERR)
 
-           END IF
-         END DO !!ROC_idx_RECEIVE
+          END IF
+        END DO !!ROC_idx_RECEIVE
 
-         DO proc_idx_send = 0, DECOMPOSITION%NUMBER_OF_DOMAINS-1
+        DO proc_idx_send = 0, DECOMPOSITION%NUMBER_OF_DOMAINS-1
 
-           IF(proc_idx_send /= PROC_ID) THEN
+          IF(proc_idx_send /= PROC_ID) THEN
 
-              CALL MPI_RECV( &
-                & DECOMPOSITION%NODE_DOMAIN( &
-                & DECOMPOSITION%VTX_DIST(proc_idx_send): &
-                & DECOMPOSITION%VTX_DIST(proc_idx_send+1)-1), &
-                & SIZE(DECOMPOSITION%NODE_DOMAIN( &
-                & DECOMPOSITION%VTX_DIST(proc_idx_send): &
-                & DECOMPOSITION%VTX_DIST(proc_idx_send+1)-1)), &
-                & MPI_INT, proc_idx_send,proc_idx_send, &
-                & COMPUTATIONAL_ENVIRONMENT%MPI_COMM,STATUS, Err)
+            CALL MPI_RECV( &
+              & DECOMPOSITION%NODE_DOMAIN( &
+              & DECOMPOSITION%VTX_DIST(proc_idx_send): &
+              & DECOMPOSITION%VTX_DIST(proc_idx_send+1)-1), &
+              & SIZE(DECOMPOSITION%NODE_DOMAIN( &
+              & DECOMPOSITION%VTX_DIST(proc_idx_send): &
+              & DECOMPOSITION%VTX_DIST(proc_idx_send+1)-1)), &
+              & MPI_INT, proc_idx_send,proc_idx_send, &
+              & COMPUTATIONAL_ENVIRONMENT%MPI_COMM,STATUS, Err)
 
-            END IF !proc_idx_send
-         END DO !procidx_send = 0, number_parts-1
-       END IF  !IF(DECOMPOSTION%NUMBER_OF_DOMAINS > 1).
+          END IF !proc_idx_send
+        END DO !procidx_send = 0, number_parts-1
+      END IF  !IF(DECOMPOSTION%NUMBER_OF_DOMAINS > 1).
+
     ELSE
       CALL FlagError("Decomposition is not associated.",ERR,ERROR,*999)
     ENDIF

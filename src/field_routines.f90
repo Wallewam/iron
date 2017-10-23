@@ -65,7 +65,7 @@ MODULE FIELD_ROUTINES
   USE TYPES
 
 
-#include "macros.h"  
+#include "macros.h"
 
   IMPLICIT NONE
 
@@ -31558,8 +31558,8 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT)  :: ERROR !<The error string
 
     !Local Variables
-    REAL(RP), ALLOCATABLE :: EDGE_LENGTHS(:) ! EDGE_LENGTHS(edge_length_idx) stores length of the edge_length_idx edge. 
-    INTEGER(INTG):: ADJACENCY_NODE, adjacency_idx, edge_length_idx, MY_COMPUTATIONAL_NODE, node_idx 
+    REAL(RP), ALLOCATABLE :: EDGE_LENGTHS(:) ! EDGE_LENGTHS(edge_length_idx) stores length of the edge_length_idx edge.
+    INTEGER(INTG):: ADJACENCY_NODE, adjacency_idx, edge_length_idx, MY_COMPUTATIONAL_NODE, node_idx
     REAL(RP)                                  :: VECTOR_ALONG_THE_EDGE(3) !Stores components of vectors along a mesh edge.
     TYPE(MESH_TYPE), POINTER                  :: INTERFACE_MESH
 
@@ -31647,238 +31647,236 @@ CONTAINS
       & NUMBER_ADJNCY_RESTRICTED_TO_INTERFACE(:)
     LOGICAL :: INTERFACE_NODE_DETECTED
 
-   ENTERS("COUPLED_DECOMPOSITION_GET_INTER_EDGES",ERR,ERROR,*999)
+    ENTERS("COUPLED_DECOMPOSITION_GET_INTER_EDGES",ERR,ERROR,*999)
 
-   IF(ASSOCIATED(COUPLED_DECOMPOSITION)) THEN
-     COUPLED_MESH=>COUPLED_DECOMPOSITION%COUPLED_FIELDS(COUPLED_DECOMPOSITION%mesh_idx)%PTR%DECOMPOSITION%MESH
-     IF(ASSOCIATED(COUPLED_MESH)) THEN
-       INTERFACE_MESH=>COUPLED_DECOMPOSITION%COUPLED_FIELDS(3)%PTR%DECOMPOSITION%MESH
-       IF(ASSOCIATED(INTERFACE_MESH)) THEN
+    IF(ASSOCIATED(COUPLED_DECOMPOSITION)) THEN
+      COUPLED_MESH=>COUPLED_DECOMPOSITION%COUPLED_FIELDS(COUPLED_DECOMPOSITION%mesh_idx)%PTR%DECOMPOSITION%MESH
+      IF(ASSOCIATED(COUPLED_MESH)) THEN
+        INTERFACE_MESH=>COUPLED_DECOMPOSITION%COUPLED_FIELDS(3)%PTR%DECOMPOSITION%MESH
+        IF(ASSOCIATED(INTERFACE_MESH)) THEN
 
-         MY_COMPUTATIONAL_NODE=COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR)
-         IF(ERR/=0) GOTO 999
+          MY_COMPUTATIONAL_NODE=COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR)
+          IF(ERR/=0) GOTO 999
 
-         NULLIFY(INTER_EDGE_LIST_INTERFACE_MESH)
-         CALL LIST_CREATE_START(INTER_EDGE_LIST_INTERFACE_MESH,ERR,ERROR,*999)
-         CALL LIST_DATA_TYPE_SET(INTER_EDGE_LIST_INTERFACE_MESH,LIST_INTG_TYPE,ERR,ERROR,*999)
-         CALL LIST_INITIAL_SIZE_SET(INTER_EDGE_LIST_INTERFACE_MESH,COUPLED_MESH%TOPOLOGY(1)%PTR%NODES%NUmberOfNOdes,ERR,ERROR,*999)
-         CALL LIST_CREATE_FINISH(INTER_EDGE_LIST_INTERFACE_MESH,ERR,ERROR,*999)
+          NULLIFY(INTER_EDGE_LIST_INTERFACE_MESH)
+          CALL LIST_CREATE_START(INTER_EDGE_LIST_INTERFACE_MESH,ERR,ERROR,*999)
+          CALL LIST_DATA_TYPE_SET(INTER_EDGE_LIST_INTERFACE_MESH,LIST_INTG_TYPE,ERR,ERROR,*999)
+          CALL LIST_INITIAL_SIZE_SET(INTER_EDGE_LIST_INTERFACE_MESH,COUPLED_MESH%TOPOLOGY(1)%PTR%NODES%NUmberOfNOdes,ERR,ERROR,*999)
+          CALL LIST_CREATE_FINISH(INTER_EDGE_LIST_INTERFACE_MESH,ERR,ERROR,*999)
 
-         NULLIFY(INTER_EDGE_LIST_COUPLED_MESH)
-         CALL LIST_CREATE_START(INTER_EDGE_LIST_COUPLED_MESH,ERR,ERROR,*999)
-         CALL LIST_DATA_TYPE_SET(INTER_EDGE_LIST_COUPLED_MESH,LIST_INTG_TYPE,ERR,ERROR,*999)
-         CALL LIST_INITIAL_SIZE_SET(INTER_EDGE_LIST_COUPLED_MESH,COUPLED_MESH%TOPOLOGY(1)%PTR%NODES%NUmberOfNOdes,ERR,ERROR,*999)
-         CALL LIST_CREATE_FINISH(INTER_EDGE_LIST_COUPLED_MESH,ERR,ERROR,*999)
+          NULLIFY(INTER_EDGE_LIST_COUPLED_MESH)
+          CALL LIST_CREATE_START(INTER_EDGE_LIST_COUPLED_MESH,ERR,ERROR,*999)
+          CALL LIST_DATA_TYPE_SET(INTER_EDGE_LIST_COUPLED_MESH,LIST_INTG_TYPE,ERR,ERROR,*999)
+          CALL LIST_INITIAL_SIZE_SET(INTER_EDGE_LIST_COUPLED_MESH,COUPLED_MESH%TOPOLOGY(1)%PTR%NODES%NUmberOfNOdes,ERR,ERROR,*999)
+          CALL LIST_CREATE_FINISH(INTER_EDGE_LIST_COUPLED_MESH,ERR,ERROR,*999)
 
-         NULLIFY(BOUNDARY_NODE_LIST)
-         CALL LIST_CREATE_START(BOUNDARY_NODE_LIST,ERR,ERROR,*999)
-         CALL LIST_DATA_TYPE_SET(BOUNDARY_NODE_LIST,LIST_INTG_TYPE,ERR,ERROR,*999)
-         CALL LIST_INITIAL_SIZE_SET(BOUNDARY_NODE_LIST,COUPLED_MESH%TOPOLOGY(1)%PTR%NODES%NUmberOfNOdes,ERR,ERROR,*999)
-         CALL LIST_CREATE_FINISH(BOUNDARY_NODE_LIST,ERR,ERROR,*999)
+          NULLIFY(BOUNDARY_NODE_LIST)
+          CALL LIST_CREATE_START(BOUNDARY_NODE_LIST,ERR,ERROR,*999)
+          CALL LIST_DATA_TYPE_SET(BOUNDARY_NODE_LIST,LIST_INTG_TYPE,ERR,ERROR,*999)
+          CALL LIST_INITIAL_SIZE_SET(BOUNDARY_NODE_LIST,COUPLED_MESH%TOPOLOGY(1)%PTR%NODES%NUmberOfNOdes,ERR,ERROR,*999)
+          CALL LIST_CREATE_FINISH(BOUNDARY_NODE_LIST,ERR,ERROR,*999)
 
-         !populate boundary nodes
-         DO coupled_mesh_node_idx = 1 , COUPLED_MESH%TOPOLOGY(1)%PTR%NODES%NUmberOfNOdes
-           IF(COUPLED_MESH%TOPOLOGY(1)%PTR%NODES%NODES(coupled_mesh_node_idx)%boundaryNode) THEN
-             CALL LIST_ITEM_ADD(BOUNDARY_NODE_LIST, coupled_mesh_node_idx, ERR, ERROR, *999)
-           END IF
-         END DO ! coupled_mesh_node_idx
+          !populate boundary nodes
+          DO coupled_mesh_node_idx = 1 , COUPLED_MESH%TOPOLOGY(1)%PTR%NODES%NUmberOfNOdes
+            IF(COUPLED_MESH%TOPOLOGY(1)%PTR%NODES%NODES(coupled_mesh_node_idx)%boundaryNode) THEN
+              CALL LIST_ITEM_ADD(BOUNDARY_NODE_LIST, coupled_mesh_node_idx, ERR, ERROR, *999)
+            END IF
+          END DO ! coupled_mesh_node_idx
 
-         CALL LIST_REMOVE_DUPLICATES(BOUNDARY_NODE_LIST, ERR, ERROR, *999)
-         CALL LIST_DETACH_AND_DESTROY(BOUNDARY_NODE_LIST, NUMBER_OF_BOUNDARY_NODES, BOUNDARY_NODES, ERR,ERROR,*999)
+          CALL LIST_REMOVE_DUPLICATES(BOUNDARY_NODE_LIST, ERR, ERROR, *999)
+          CALL LIST_DETACH_AND_DESTROY(BOUNDARY_NODE_LIST, NUMBER_OF_BOUNDARY_NODES, BOUNDARY_NODES, ERR,ERROR,*999)
 
-         ALLOCATE(NUMBER_ADJNCY_RESTRICTED_TO_INTERFACE(NUMBER_OF_BOUNDARY_NODES), STAT=ERR)
-         IF(ERR/=0) CALL FlagError("Could not allocate ADJNCY_RESTRICTED_TO_INTERFACE array",ERR,ERROR,*999)
+          ALLOCATE(NUMBER_ADJNCY_RESTRICTED_TO_INTERFACE(NUMBER_OF_BOUNDARY_NODES), STAT=ERR)
+          IF(ERR/=0) CALL FlagError("Could not allocate ADJNCY_RESTRICTED_TO_INTERFACE array",ERR,ERROR,*999)
 
-         ALLOCATE(ADJNCY_RESTRICTED_TO_INTERFACE(NUMBER_OF_BOUNDARY_NODES, &
-           & COUPLED_MESH%TOPOLOGY(1)%PTR%NODES%NUmberOfNOdes),STAT=ERR)
-         IF(ERR/=0) CALL FlagError("Could not allocate NUMBER_ADJNCY_RESTRICTED_TO_INTERFACE array",ERR,ERROR,*999)
+          ALLOCATE(ADJNCY_RESTRICTED_TO_INTERFACE(NUMBER_OF_BOUNDARY_NODES, &
+            & COUPLED_MESH%TOPOLOGY(1)%PTR%NODES%NUmberOfNOdes),STAT=ERR)
+          IF(ERR/=0) CALL FlagError("Could not allocate NUMBER_ADJNCY_RESTRICTED_TO_INTERFACE array",ERR,ERROR,*999)
 
-         ALLOCATE(ADJNCY_RESTRICTED_TO_INTERFACE_LIST(NUMBER_OF_BOUNDARY_NODES), STAT=ERR)
-         IF(ERR/=0) CALL FlagError("Could not allocate NUMBER_ADJNCY_RESTRICTED_TO_INTERFACE_LIST array",ERR,ERROR,*999)
-
-
-         DO coupled_mesh_node_idx = 1 , NUMBER_OF_BOUNDARY_NODES
-
-           boundary_node_idx      =   BOUNDARY_NODES(coupled_mesh_node_idx)
-
-           INTERFACE_NODE_DETECTED = .FALSE.
-           NULLIFY(ADJNCY_RESTRICTED_TO_INTERFACE_LIST(coupled_mesh_node_idx)%PTR)
-
-           CALL LIST_CREATE_START(ADJNCY_RESTRICTED_TO_INTERFACE_LIST(coupled_mesh_node_idx)%PTR,ERR,ERROR,*999)
-
-           CALL LIST_DATA_TYPE_SET(ADJNCY_RESTRICTED_TO_INTERFACE_LIST(coupled_mesh_node_idx)%PTR,LIST_INTG_TYPE, ERR, ERROR, *999)
-
-           CALL LIST_INITIAL_SIZE_SET(ADJNCY_RESTRICTED_TO_INTERFACE_LIST(coupled_mesh_node_idx)%PTR, &
-             & SIZE(COUPLED_MESH%TOPOLOGY(1)%PTR%NODES%NODES(boundary_node_idx)%surroundingNodes),ERR,ERROR,*999)
-
-           CALL LIST_CREATE_FINISH(ADJNCY_RESTRICTED_TO_INTERFACE_LIST(coupled_mesh_node_idx)%PTR,ERR, ERROR, *999)
-
-           ! To determine the size of COupledMeshNodeAdjancyRestrictedToBoundary
-           DO surrounding_node_idx = 1, SIZE(COUPLED_MESH%TOPOLOGY(1)%PTR%NODES%NODES(boundary_node_idx)%surroundingNodes)
-
-             IF(ANY(COUPLED_MESH%TOPOLOGY(1)%PTR%NODES%NODES(boundary_node_idx)%surroundingNodes(surrounding_node_idx)== &
-               BOUNDARY_NODES)) THEN 
-               ! Node adjancy containing only the nodes that belong to the boundary.
-               CALL LIST_ITEM_ADD(ADJNCY_RESTRICTED_TO_INTERFACE_LIST(coupled_mesh_node_idx)%PTR, &
-                 & COUPLED_MESH%TOPOLOGY(1)%PTR%NODES%NODES(boundary_node_idx)%surroundingNodes(surrounding_node_idx), &
-                 & ERR,ERROR,*999)
-
-             END  IF  !  IF( any(CoupledMesh%adjancy(COupledMesh%BOundaryNodes ...
+          ALLOCATE(ADJNCY_RESTRICTED_TO_INTERFACE_LIST(NUMBER_OF_BOUNDARY_NODES), STAT=ERR)
+          IF(ERR/=0) CALL FlagError("Could not allocate NUMBER_ADJNCY_RESTRICTED_TO_INTERFACE_LIST array",ERR,ERROR,*999)
 
 
-           END DO !surrounding_node_idx
+          DO coupled_mesh_node_idx = 1 , NUMBER_OF_BOUNDARY_NODES
 
-           CALL LIST_REMOVE_DUPLICATES(ADJNCY_RESTRICTED_TO_INTERFACE_LIST(coupled_mesh_node_idx)%PTR,ERR,ERROR,*999)
+            boundary_node_idx      =   BOUNDARY_NODES(coupled_mesh_node_idx)
 
-           CALL LIST_DETACH_AND_DESTROY(ADJNCY_RESTRICTED_TO_INTERFACE_LIST(coupled_mesh_node_idx)%PTR, &
-             & NUMBER_OF_NODES,LIST_OF_NODES,ERR,ERROR,*999)
+            INTERFACE_NODE_DETECTED = .FALSE.
+            NULLIFY(ADJNCY_RESTRICTED_TO_INTERFACE_LIST(coupled_mesh_node_idx)%PTR)
 
+            CALL LIST_CREATE_START(ADJNCY_RESTRICTED_TO_INTERFACE_LIST(coupled_mesh_node_idx)%PTR,ERR,ERROR,*999)
 
-           NUMBER_ADJNCY_RESTRICTED_TO_INTERFACE(coupled_mesh_node_idx:coupled_mesh_node_idx)=NUMBER_OF_NODES
+            CALL LIST_DATA_TYPE_SET(ADJNCY_RESTRICTED_TO_INTERFACE_LIST(coupled_mesh_node_idx)%PTR,LIST_INTG_TYPE, ERR, ERROR, *999)
 
-           ADJNCY_RESTRICTED_TO_INTERFACE( &
-             & coupled_mesh_node_idx,1:NUMBER_ADJNCY_RESTRICTED_TO_INTERFACE(coupled_mesh_node_idx)) = &
-             & LIST_OF_NODES(1:NUMBER_OF_NODES)
-           DEALLOCATE(LIST_OF_NODES)
+            CALL LIST_INITIAL_SIZE_SET(ADJNCY_RESTRICTED_TO_INTERFACE_LIST(coupled_mesh_node_idx)%PTR, &
+              & SIZE(COUPLED_MESH%TOPOLOGY(1)%PTR%NODES%NODES(boundary_node_idx)%surroundingNodes),ERR,ERROR,*999)
 
-         END DO !COUPLED_mesh_idx
+            CALL LIST_CREATE_FINISH(ADJNCY_RESTRICTED_TO_INTERFACE_LIST(coupled_mesh_node_idx)%PTR,ERR, ERROR, *999)
 
-         ALLOCATE(DISTANCE(INTERFACE_MESH%TOPOLOGY(1)%PTR%NODES%NumberOfNOdes), STAT=ERR)
-         IF(ERR/=0) CALL FlagError(" Unable to allocate DISTANCE array.",ERR,ERROR,*999)
+            ! To determine the size of COupledMeshNodeAdjancyRestrictedToBoundary
+            DO surrounding_node_idx = 1, SIZE(COUPLED_MESH%TOPOLOGY(1)%PTR%NODES%NODES(boundary_node_idx)%surroundingNodes)
 
-         DO coupled_mesh_node_idx = 1, NUMBER_OF_BOUNDARY_NODES
+              IF(ANY(COUPLED_MESH%TOPOLOGY(1)%PTR%NODES%NODES(boundary_node_idx)%surroundingNodes(surrounding_node_idx)== &
+                & BOUNDARY_NODES)) THEN
+                ! Node adjancy containing only the nodes that belong to the boundary.
+                CALL LIST_ITEM_ADD(ADJNCY_RESTRICTED_TO_INTERFACE_LIST(coupled_mesh_node_idx)%PTR, &
+                  & COUPLED_MESH%TOPOLOGY(1)%PTR%NODES%NODES(boundary_node_idx)%surroundingNodes(surrounding_node_idx), &
+                  & ERR,ERROR,*999)
 
-           distance_idx  = 0
+              END  IF  !  IF( any(CoupledMesh%adjancy(COupledMesh%BOundaryNodes ...
 
-           boundary_node_idx      =   BOUNDARY_NODES(coupled_mesh_node_idx)
+            END DO !surrounding_node_idx
 
-           DISTANCE =  -1
+            CALL LIST_REMOVE_DUPLICATES(ADJNCY_RESTRICTED_TO_INTERFACE_LIST(coupled_mesh_node_idx)%PTR,ERR,ERROR,*999)
 
-           DO interface_node_idx = 1, INTERFACE_MESH%TOPOLOGY(1)%PTR%NODES%NUmberOfNOdes
+            CALL LIST_DETACH_AND_DESTROY(ADJNCY_RESTRICTED_TO_INTERFACE_LIST(coupled_mesh_node_idx)%PTR, &
+              & NUMBER_OF_NODES,LIST_OF_NODES,ERR,ERROR,*999)
 
-             DISTANCE(interface_node_idx) = NORM2(COUPLED_DECOMPOSITION%INTERFACE_MESH_COORDINATES(interface_node_idx,:) &
-               & - COUPLED_DECOMPOSITION%COUPLED_MESH_COORDINATES(boundary_node_idx,:))
+            NUMBER_ADJNCY_RESTRICTED_TO_INTERFACE(coupled_mesh_node_idx:coupled_mesh_node_idx)=NUMBER_OF_NODES
 
-           END DO ! interface_node_idx
+            ADJNCY_RESTRICTED_TO_INTERFACE( &
+              & coupled_mesh_node_idx,1:NUMBER_ADJNCY_RESTRICTED_TO_INTERFACE(coupled_mesh_node_idx)) = &
+              & LIST_OF_NODES(1:NUMBER_OF_NODES)
+            DEALLOCATE(LIST_OF_NODES)
 
-           IF(MINVAL(PACK(DISTANCE,DISTANCE >= -1E-5)) < MAXIMUM_INTERFACE_EDGE_LENGTH ) THEN
+          END DO !COUPLED_mesh_idx
 
-             INTERFACE_MESH_NODE_TO_ADD= INT(SQRT(REAL(DOT_PRODUCT(&
-               & MINLOC(PACK(DISTANCE,DISTANCE >= -1E-5)-MINVAL(PACK(DISTANCE,DISTANCE >= -1E-5))),&
-               & MINLOC(PACK(DISTANCE,DISTANCE >= -1E-5)-MINVAL(PACK(DISTANCE,DISTANCE >= -1E-5)))))),INTG)
-             ! From here onward normal angles are calcuated on interface mesh node "INTERFACE_MESH_NODE_TO_ADD" ... 
-             ! and the coupled mesh node "boundary_node_idx" but ... 
+          ALLOCATE(DISTANCE(INTERFACE_MESH%TOPOLOGY(1)%PTR%NODES%NumberOfNOdes), STAT=ERR)
+          IF(ERR/=0) CALL FlagError(" Unable to allocate DISTANCE array.",ERR,ERROR,*999)
+
+          DO coupled_mesh_node_idx = 1, NUMBER_OF_BOUNDARY_NODES
+
+            distance_idx  = 0
+
+            boundary_node_idx      =   BOUNDARY_NODES(coupled_mesh_node_idx)
+
+            DISTANCE =  -1
+
+            DO interface_node_idx = 1, INTERFACE_MESH%TOPOLOGY(1)%PTR%NODES%NUmberOfNOdes
+
+              DISTANCE(interface_node_idx) = NORM2(COUPLED_DECOMPOSITION%INTERFACE_MESH_COORDINATES(interface_node_idx,:) &
+                & - COUPLED_DECOMPOSITION%COUPLED_MESH_COORDINATES(boundary_node_idx,:))
+
+            END DO ! interface_node_idx
+
+            IF(MINVAL(PACK(DISTANCE,DISTANCE >= -1E-5)) < MAXIMUM_INTERFACE_EDGE_LENGTH ) THEN
+
+              INTERFACE_MESH_NODE_TO_ADD= INT(SQRT(REAL(DOT_PRODUCT(&
+                & MINLOC(PACK(DISTANCE,DISTANCE >= -1E-5)-MINVAL(PACK(DISTANCE,DISTANCE >= -1E-5))), &
+                & MINLOC(PACK(DISTANCE,DISTANCE >= -1E-5)-MINVAL(PACK(DISTANCE,DISTANCE >= -1E-5)))))),INTG)
+             ! From here onward normal angles are calcuated on interface mesh node "INTERFACE_MESH_NODE_TO_ADD" ...
+             ! and the coupled mesh node "boundary_node_idx" but ...
              ! ...the feature right now is not robust enough for mesh 3D mesh with quadratic or cubic interolation order...
              ! Therefore in order to build robust inter edges with 3D mesh with quadratic or cubic interolation order...
              ! ... the interface mesh graph should be atleast 3 times more refined than the coupled mesh graph
-             IF(COUPLED_MESH%NUMBER_OF_DIMENSIONS == 3 .AND. & 
-               & (COUPLED_MESH%TOPOLOGY(1)%PTR%ELEMENTS%ELEMENTS(1)%BASIS% &
-               & INTERPOLATION_XI(1)==BASIS_QUADRATIC_LAGRANGE_INTERPOLATION .OR. & 
-               & COUPLED_MESH%TOPOLOGY(1)%PTR%ELEMENTS%ELEMENTS(1)%BASIS% &
-               & INTERPOLATION_XI(1)==BASIS_QUADRATIC_SIMPLEX_INTERPOLATION .OR. & 
-               & INTERFACE_MESH%TOPOLOGY(1)%PTR%ELEMENTS%ELEMENTS(1)%BASIS% &
-               & INTERPOLATION_XI(1)==BASIS_QUADRATIC_LAGRANGE_INTERPOLATION .OR. & 
-               & INTERFACE_MESH%TOPOLOGY(1)%PTR%ELEMENTS%ELEMENTS(1)%BASIS% &
-               & INTERPOLATION_XI(1)==BASIS_QUADRATIC_SIMPLEX_INTERPOLATION)) THEN 
+              IF(COUPLED_MESH%NUMBER_OF_DIMENSIONS == 3 .AND. &
+                & (COUPLED_MESH%TOPOLOGY(1)%PTR%ELEMENTS%ELEMENTS(1)%BASIS% &
+                & INTERPOLATION_XI(1)==BASIS_QUADRATIC_LAGRANGE_INTERPOLATION .OR. &
+                & COUPLED_MESH%TOPOLOGY(1)%PTR%ELEMENTS%ELEMENTS(1)%BASIS% &
+                & INTERPOLATION_XI(1)==BASIS_QUADRATIC_SIMPLEX_INTERPOLATION .OR. &
+                & INTERFACE_MESH%TOPOLOGY(1)%PTR%ELEMENTS%ELEMENTS(1)%BASIS% &
+                & INTERPOLATION_XI(1)==BASIS_QUADRATIC_LAGRANGE_INTERPOLATION .OR. &
+                & INTERFACE_MESH%TOPOLOGY(1)%PTR%ELEMENTS%ELEMENTS(1)%BASIS% &
+                & INTERPOLATION_XI(1)==BASIS_QUADRATIC_SIMPLEX_INTERPOLATION)) THEN
 
-               CALL LIST_ITEM_ADD(INTER_EDGE_LIST_INTERFACE_MESH,INTERFACE_MESH_NODE_TO_ADD, ERR, ERROR, *999)
+                CALL LIST_ITEM_ADD(INTER_EDGE_LIST_INTERFACE_MESH,INTERFACE_MESH_NODE_TO_ADD, ERR, ERROR, *999)
 
-               CALL LIST_ITEM_ADD(INTER_EDGE_LIST_COUPLED_MESH,boundary_node_idx, ERR, ERROR, *999)
+                CALL LIST_ITEM_ADD(INTER_EDGE_LIST_COUPLED_MESH,boundary_node_idx, ERR, ERROR, *999)
 
-             ELSE ! calculate normals for 2D mesh with linear , quadratic and cubic interpolation order and 3D mesh with ...  
-                  ! .... linear interpolation order. 
+              ELSE ! calculate normals for 2D mesh with linear , quadratic and cubic interpolation order and 3D mesh with ...
+                   ! .... linear interpolation order.
 
-               ! Calculate normal at vertex coupled_mesh_node_idx.
-               CALL COUPLED_MESH_CALCULATE_NORMAL(COUPLED_DECOMPOSITION,  &
-                 & boundary_node_idx, NORMAL_VECTOR_COUPLED_MESH, ERR, ERROR, *999)
+                ! Calculate normal at vertex coupled_mesh_node_idx.
+                CALL COUPLED_MESH_CALCULATE_NORMAL(COUPLED_DECOMPOSITION,  &
+                  & boundary_node_idx, NORMAL_VECTOR_COUPLED_MESH, ERR, ERROR, *999)
 
-               ! Calculate normal at vertex interface_mesh_node_idx.
-               CALL INTERFACE_MESH_CALCULATE_NORMAL(COUPLED_DECOMPOSITION,  &
-                 & INTERFACE_MESH_NODE_TO_ADD, NORMAL_VECTOR_INTERFACE_MESH, ERR, ERROR, *999)
+                ! Calculate normal at vertex interface_mesh_node_idx.
+                CALL INTERFACE_MESH_CALCULATE_NORMAL(COUPLED_DECOMPOSITION,  &
+                  & INTERFACE_MESH_NODE_TO_ADD, NORMAL_VECTOR_INTERFACE_MESH, ERR, ERROR, *999)
 
-               DO coupled_mesh_normal_vector_idx = 1, SIZE(NORMAL_VECTOR_COUPLED_MESH,2)
-                 DO interface_mesh_normal_vector_idx = 1, SIZE(NORMAL_VECTOR_INTERFACE_MESH,2)
+                DO coupled_mesh_normal_vector_idx = 1, SIZE(NORMAL_VECTOR_COUPLED_MESH,2)
+                  DO interface_mesh_normal_vector_idx = 1, SIZE(NORMAL_VECTOR_INTERFACE_MESH,2)
 
 
-                  ! COS(\Theeta)  =  (U.V)/( |U|.|V|)
-                   DIFFERENCE_IN_ANGLE =  ACOS(DOT_PRODUCT(NORMAL_VECTOR_COUPLED_MESH(:,coupled_mesh_normal_vector_idx), &
-                     & NORMAL_VECTOR_INTERFACE_MESH(:,interface_mesh_normal_vector_idx))/ &
-                     & ((NORM2(NORMAL_VECTOR_COUPLED_MESH(:,coupled_mesh_normal_vector_idx))* &
-                     & NORM2(NORMAL_VECTOR_INTERFACE_MESH(:,interface_mesh_normal_vector_idx)))))
+                   ! COS(\Theeta)  =  (U.V)/( |U|.|V|)
+                    DIFFERENCE_IN_ANGLE =  ACOS(DOT_PRODUCT(NORMAL_VECTOR_COUPLED_MESH(:,coupled_mesh_normal_vector_idx), &
+                      & NORMAL_VECTOR_INTERFACE_MESH(:,interface_mesh_normal_vector_idx))/ &
+                      & ((NORM2(NORMAL_VECTOR_COUPLED_MESH(:,coupled_mesh_normal_vector_idx))* &
+                      & NORM2(NORMAL_VECTOR_INTERFACE_MESH(:,interface_mesh_normal_vector_idx)))))
 
-                   DIFFERENCE_IN_ANGLE = DIFFERENCE_IN_ANGLE*180/3.14159 ! Calculating the difference of angle in degrees
+                    DIFFERENCE_IN_ANGLE = DIFFERENCE_IN_ANGLE*180/3.14159 ! Calculating the difference of angle in degrees
                  ! If the difference of angle between the normal at vertex of the interface mesh and the vertex at the coupled...
                  ! ... mesh if 5 degrees then, the vertices exist on the same interedge.
 
-                   IF((DIFFERENCE_IN_ANGLE .GE. 0. .AND. DIFFERENCE_IN_ANGLE .LE. 5.0001) .OR. &
-                     & (DIFFERENCE_IN_ANGLE .GE. 174.9999 .AND. DIFFERENCE_IN_ANGLE .LE. 181.0001)) THEN !With tolerance of 1E-4
+                    IF((DIFFERENCE_IN_ANGLE .GE. 0. .AND. DIFFERENCE_IN_ANGLE .LE. 5.0001) .OR. &
+                      & (DIFFERENCE_IN_ANGLE .GE. 174.9999 .AND. DIFFERENCE_IN_ANGLE .LE. 181.0001)) THEN !With tolerance of 1E-4
 
-                     CALL LIST_ITEM_ADD(INTER_EDGE_LIST_INTERFACE_MESH,INTERFACE_MESH_NODE_TO_ADD, ERR, ERROR, *999)
+                      CALL LIST_ITEM_ADD(INTER_EDGE_LIST_INTERFACE_MESH,INTERFACE_MESH_NODE_TO_ADD, ERR, ERROR, *999)
 
-                     CALL LIST_ITEM_ADD(INTER_EDGE_LIST_COUPLED_MESH,boundary_node_idx, ERR, ERROR, *999)
+                      CALL LIST_ITEM_ADD(INTER_EDGE_LIST_COUPLED_MESH,boundary_node_idx, ERR, ERROR, *999)
 
-                     EXIT
+                      EXIT
 
-                   END IF
+                    END IF
 
-                 END DO !interface_mesh_normal_vector_idx
+                  END DO !interface_mesh_normal_vector_idx
 
-                 IF((DIFFERENCE_IN_ANGLE .GE. 0 .AND. DIFFERENCE_IN_ANGLE .LE. 5.0001) .OR. &
-                   & (DIFFERENCE_IN_ANGLE .GE. 174.9999 .AND. DIFFERENCE_IN_ANGLE .LE. 181.0001)) EXIT !With tolerance of 1E-4
+                  IF((DIFFERENCE_IN_ANGLE .GE. 0 .AND. DIFFERENCE_IN_ANGLE .LE. 5.0001) .OR. &
+                    & (DIFFERENCE_IN_ANGLE .GE. 174.9999 .AND. DIFFERENCE_IN_ANGLE .LE. 181.0001)) EXIT !With tolerance of 1E-4
 
-               END DO ! coupled_mesh_normal_vector_idx
-             END IF
-             IF(ALLOCATED(NORMAL_VECTOR_COUPLED_MESH)) DEALLOCATE(NORMAL_VECTOR_COUPLED_MESH)
-             IF(ALLOCATED(NORMAL_VECTOR_INTERFACE_MESH)) DEALLOCATE(NORMAL_VECTOR_INTERFACE_MESH)
+                END DO ! coupled_mesh_normal_vector_idx
+              END IF
+              IF(ALLOCATED(NORMAL_VECTOR_COUPLED_MESH)) DEALLOCATE(NORMAL_VECTOR_COUPLED_MESH)
+              IF(ALLOCATED(NORMAL_VECTOR_INTERFACE_MESH)) DEALLOCATE(NORMAL_VECTOR_INTERFACE_MESH)
 
-           END IF
+            END IF
 
-         END DO !coupled_mesh_node_idx
+          END DO !coupled_mesh_node_idx
 
-         CALL LIST_DETACH_AND_DESTROY(INTER_EDGE_LIST_INTERFACE_MESH, &
-           & NUMBER_OF_INTER_EDGES ,INTERFACE_MESH_INTER_EDGE_NODES, ERR,ERROR,*999)
+          CALL LIST_DETACH_AND_DESTROY(INTER_EDGE_LIST_INTERFACE_MESH, &
+            & NUMBER_OF_INTER_EDGES ,INTERFACE_MESH_INTER_EDGE_NODES, ERR,ERROR,*999)
 
-         CALL LIST_DETACH_AND_DESTROY(INTER_EDGE_LIST_COUPLED_MESH, &
-           & NUMBER_OF_INTER_EDGES ,COUPLED_MESH_INTER_EDGE_NODES, ERR,ERROR,*999)
-
-
-         ALLOCATE(COUPLED_DECOMPOSITION%INTER_EDGES(NUMBER_OF_INTER_EDGES,2), STAT=ERR)
-         IF(ERR /=0) CALL FlagError(" Unable to allocate INTER_EDGES array.",ERR,ERROR,*999)
-
-         COUPLED_DECOMPOSITION%INTER_EDGES = 0
-
-         DO inter_edge_idx = 1,   NUMBER_OF_INTER_EDGES
-
-           coupled_mesh_node_idx =  COUPLED_MESH_INTER_EDGE_NODES(inter_edge_idx)
-           interface_node_idx = INTERFACE_MESH_INTER_EDGE_NODES(inter_edge_idx)
-
-           COUPLED_DECOMPOSITION%INTER_EDGES(inter_edge_idx,2) = coupled_mesh_node_idx
-           COUPLED_DECOMPOSITION%INTER_EDGES(inter_edge_idx,1) = interface_node_idx
+          CALL LIST_DETACH_AND_DESTROY(INTER_EDGE_LIST_COUPLED_MESH, &
+            & NUMBER_OF_INTER_EDGES ,COUPLED_MESH_INTER_EDGE_NODES, ERR,ERROR,*999)
 
 
-         END DO  !inter_edge_idx
-         ! Deallocate local data structures
-         IF(ALLOCATED(DISTANCE)) DEALLOCATE(DISTANCE)
-         IF(ALLOCATED(ADJNCY_RESTRICTED_TO_INTERFACE)) DEALLOCATE(ADJNCY_RESTRICTED_TO_INTERFACE)
-         IF(ALLOCATED(BOUNDARY_NODES)) DEALLOCATE(BOUNDARY_NODES)
-         IF(ALLOCATED(COUPLED_MESH_INTER_EDGE_NODES)) DEALLOCATE(COUPLED_MESH_INTER_EDGE_NODES)
-         IF(ALLOCATED(LIST_OF_NODES)) DEALLOCATE(LIST_OF_NODES)
-         IF(ALLOCATED(NUMBER_ADJNCY_RESTRICTED_TO_INTERFACE)) DEALLOCATE(NUMBER_ADJNCY_RESTRICTED_TO_INTERFACE)
-         IF(ALLOCATED(INTERFACE_MESH_INTER_EDGE_NODES)) DEALLOCATE(INTERFACE_MESH_INTER_EDGE_NODES)
+          ALLOCATE(COUPLED_DECOMPOSITION%INTER_EDGES(NUMBER_OF_INTER_EDGES,2), STAT=ERR)
+          IF(ERR /=0) CALL FlagError(" Unable to allocate INTER_EDGES array.",ERR,ERROR,*999)
 
-       ELSE
-         CALL FlagError(" Interface mesh is not associated.",ERR,ERROR,*999)
-       ENDIF
-     ELSE
-       CALL FlagError(" COupled mesh is not associated.",ERR,ERROR,*999)
-     ENDIF
-   ELSE
-     CALL FlagError(" Coupled mesh Field is not associated.",ERR,ERROR,*999)
-   ENDIF
-   EXITS("COUPLED_DECOMPOSITION_GET_INTER_EDGES.")
-   RETURN
+          COUPLED_DECOMPOSITION%INTER_EDGES = 0
+
+          DO inter_edge_idx = 1,   NUMBER_OF_INTER_EDGES
+
+            coupled_mesh_node_idx =  COUPLED_MESH_INTER_EDGE_NODES(inter_edge_idx)
+            interface_node_idx = INTERFACE_MESH_INTER_EDGE_NODES(inter_edge_idx)
+
+            COUPLED_DECOMPOSITION%INTER_EDGES(inter_edge_idx,2) = coupled_mesh_node_idx
+            COUPLED_DECOMPOSITION%INTER_EDGES(inter_edge_idx,1) = interface_node_idx
+
+
+          END DO  !inter_edge_idx
+          ! Deallocate local data structures
+          IF(ALLOCATED(DISTANCE)) DEALLOCATE(DISTANCE)
+          IF(ALLOCATED(ADJNCY_RESTRICTED_TO_INTERFACE)) DEALLOCATE(ADJNCY_RESTRICTED_TO_INTERFACE)
+          IF(ALLOCATED(BOUNDARY_NODES)) DEALLOCATE(BOUNDARY_NODES)
+          IF(ALLOCATED(COUPLED_MESH_INTER_EDGE_NODES)) DEALLOCATE(COUPLED_MESH_INTER_EDGE_NODES)
+          IF(ALLOCATED(LIST_OF_NODES)) DEALLOCATE(LIST_OF_NODES)
+          IF(ALLOCATED(NUMBER_ADJNCY_RESTRICTED_TO_INTERFACE)) DEALLOCATE(NUMBER_ADJNCY_RESTRICTED_TO_INTERFACE)
+          IF(ALLOCATED(INTERFACE_MESH_INTER_EDGE_NODES)) DEALLOCATE(INTERFACE_MESH_INTER_EDGE_NODES)
+
+        ELSE
+          CALL FlagError(" Interface mesh is not associated.",ERR,ERROR,*999)
+        ENDIF
+      ELSE
+        CALL FlagError(" COupled mesh is not associated.",ERR,ERROR,*999)
+      ENDIF
+    ELSE
+      CALL FlagError(" Coupled mesh Field is not associated.",ERR,ERROR,*999)
+    ENDIF
+    EXITS("COUPLED_DECOMPOSITION_GET_INTER_EDGES.")
+    RETURN
 999 ERRORSEXITS("COUPLED_DECOMPOSITION_GET_INTER_EDGES.",ERR,ERROR)
-   RETURN 1
+    RETURN 1
 
   END SUBROUTINE COUPLED_DECOMPOSITION_GET_INTER_EDGES
 
@@ -31964,7 +31962,7 @@ CONTAINS
           DO coordinate_idx = 1, 3
             counter= 0
             ! The following do-loop figures out which one of the coordinates in the coupled mesh is all zero.
-            ! In other words, it will help algorithm to judge which plane the 2D mesh lie on.             
+            ! In other words, it will help algorithm to judge which plane the 2D mesh lie on.
             DO node_idx = 1, SIZE(COUPLED_DECOMPOSITION%COUPLED_MESH_COORDINATES,1)
 
               IF(ABS(COUPLED_DECOMPOSITION%COUPLED_MESH_COORDINATES(node_idx, coordinate_idx))<=1E-12) &
@@ -32015,11 +32013,11 @@ CONTAINS
 
           END DO
 
-            NORMAL_VECTOR(:,NUMBER_OF_SURROUNDING_NODES+1) = NORMAL_VECTOR(:,NUMBER_OF_SURROUNDING_NODES+1)/ &   ! Averaging out the vector
-              & NUMBER_OF_SURROUNDING_NODES ! Averaging the vector.
+          NORMAL_VECTOR(:,NUMBER_OF_SURROUNDING_NODES+1) = NORMAL_VECTOR(:,NUMBER_OF_SURROUNDING_NODES+1)/ &   ! Averaging out the vector
+            & NUMBER_OF_SURROUNDING_NODES ! Averaging the vector.
 
-            NORMAL_VECTOR(:,NUMBER_OF_SURROUNDING_NODES+1) = NORMAL_VECTOR(:,NUMBER_OF_SURROUNDING_NODES+1)/ &
-              & NORM2(NORMAL_VECTOR(:,NUMBER_OF_SURROUNDING_NODES+1)) ! Normalizing the vector
+          NORMAL_VECTOR(:,NUMBER_OF_SURROUNDING_NODES+1) = NORMAL_VECTOR(:,NUMBER_OF_SURROUNDING_NODES+1)/ &
+            & NORM2(NORMAL_VECTOR(:,NUMBER_OF_SURROUNDING_NODES+1)) ! Normalizing the vector
 
         ELSE IF(COUPLED_MESH%NUMBER_OF_DIMENSIONS == 3) THEN
 
@@ -32065,20 +32063,20 @@ CONTAINS
           NORMAL_VECTOR(:,SIZE(NORMAL_VECTOR,2)) = NORMAL_VECTOR(:,SIZE(NORMAL_VECTOR,2))/ &
             & NORM2(NORMAL_VECTOR(:,SIZE(NORMAL_VECTOR,2)))
 
-       END IF !(COUPLED_MESH%NUMBER_OF_DIMENSIONS == 2)
+        END IF !(COUPLED_MESH%NUMBER_OF_DIMENSIONS == 2)
 
-       IF(ALLOCATED(TANGENT_VECTOR)) DEALLOCATE(TANGENT_VECTOR)
+        IF(ALLOCATED(TANGENT_VECTOR)) DEALLOCATE(TANGENT_VECTOR)
 
-     ELSE
-       CALL FlagError(" Coupled mesh is not associated.",ERR,ERROR,*999)
-     ENDIF
-   ELSE
-     CALL FlagError(" Coupled decomposition is not associated.",ERR,ERROR,*999)
-   ENDIF
-   EXITS(" COUPLED_MESH_CALCULATE_NORMAL.")
-   RETURN
+      ELSE
+        CALL FlagError(" Coupled mesh is not associated.",ERR,ERROR,*999)
+      ENDIF
+    ELSE
+      CALL FlagError(" Coupled decomposition is not associated.",ERR,ERROR,*999)
+    ENDIF
+    EXITS(" COUPLED_MESH_CALCULATE_NORMAL.")
+    RETURN
 999 ERRORSEXITS(" COUPLED_MESH_CALCULATE_NORMAL.",ERR,ERROR)
-   RETURN 1
+    RETURN 1
   END SUBROUTINE  COUPLED_MESH_CALCULATE_NORMAL
 
 !=================================================================================================================
@@ -32120,7 +32118,6 @@ CONTAINS
                                                                 ! NORMAL_VECTOR(1,:) is perpendicular to TANGENT_VECTOR(1,:)
                                                                 ! NORMAL_VECTOR(2,:) is perpendicular to TANGENT_VECTOR(2,:)
                                                                 ! NORMAL_VECTOR(3,:) is perpendicular to TANGENT_VECTOR(3,:)
-                                                                                                                                    
     !Local variables
     INTEGER(INTG)  :: coordinate_idx, counter, element_idx, MY_COMPUTATIONAL_NODE, node_idx, normal_vector_idx, &
       & normal_vector_idx_1,normal_vector_idx_2, NUMBER_OF_SURROUNDING_NODES, &
@@ -32143,12 +32140,11 @@ CONTAINS
 
         ALLOCATE(TANGENT_VECTOR(3,NUMBER_OF_SURROUNDING_NODES), STAT=ERR)
         IF(ERR/=0) CALL FlagError("Could not allocate TANGENT_VECTOR array.",ERR,ERROR,*999)
-       
         DO surrounding_node_idx = 1, NUMBER_OF_SURROUNDING_NODES
           surrouding_node = INTERFACE_MESH%TOPOLOGY(1)%PTR%NODES%NODES(NODE_ID)%surroundingNodes(surrounding_node_idx)
-          ! Calculating the tangent vector between surrounding_node_idx and surrouding_node.  
+          ! Calculating the tangent vector between surrounding_node_idx and surrouding_node.
           TANGENT_VECTOR(:,surrounding_node_idx)=COUPLED_DECOMPOSITION%INTERFACE_MESH_COORDINATES(surrouding_node,:)-&
-            &  COUPLED_DECOMPOSITION%INTERFACE_MESH_COORDINATES(NODE_ID,:)  
+            &  COUPLED_DECOMPOSITION%INTERFACE_MESH_COORDINATES(NODE_ID,:)
 
         END DO ! surrounding_node_idx
 
@@ -32258,18 +32254,18 @@ CONTAINS
           NORMAL_VECTOR(:,SIZE(NORMAL_VECTOR,2)) = NORMAL_VECTOR(:,SIZE(NORMAL_VECTOR,2))/ &
             & NORM2(NORMAL_VECTOR(:,SIZE(NORMAL_VECTOR,2)))
 
-       END IF !(INTERFACE_MESH%NUMBER_OF_DIMENSIONS == 2)
+        END IF !(INTERFACE_MESH%NUMBER_OF_DIMENSIONS == 2)
 
-     ELSE
-       CALL FlagError(" Coupled mesh is not associated.",ERR,ERROR,*999)
-     ENDIF
-   ELSE
-     CALL FlagError(" Coupled decomposition is not associated.",ERR,ERROR,*999)
-   ENDIF
-   EXITS(" INTERFACE_MESH_CALCULATE_NORMAL.")
-   RETURN
+      ELSE
+        CALL FlagError(" Coupled mesh is not associated.",ERR,ERROR,*999)
+      ENDIF
+    ELSE
+      CALL FlagError(" Coupled decomposition is not associated.",ERR,ERROR,*999)
+    ENDIF
+    EXITS(" INTERFACE_MESH_CALCULATE_NORMAL.")
+    RETURN
 999 ERRORSEXITS(" INTERFACE_MESH_CALCULATE_NORMAL.",ERR,ERROR)
-   RETURN 1
+    RETURN 1
   END SUBROUTINE  INTERFACE_MESH_CALCULATE_NORMAL
 
 !=================================================================================================================
@@ -32278,7 +32274,7 @@ CONTAINS
 
   SUBROUTINE COUPLED_DECOMPOSITION_FIXED_VERTEX_PARTITIONING(COUPLED_DECOMPOSITION, ERR, ERROR, *)
 
-  !Argument variables
+    !Argument variables
     TYPE(COUPLED_DECOMPOSITION_TYPE), POINTER ,INTENT(INOUT) :: COUPLED_DECOMPOSITION !< Coupled mesh decomposition type object.
     INTEGER(INTG), INTENT(OUT)                               :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT)                        :: ERROR !<The error string
@@ -32328,7 +32324,7 @@ CONTAINS
                   ! Calculate surroundingNode data-structure for the coupled mesh graph.
                   CALL GET_SURROUNDING_NODES(COUPLED_MESH, ERR, error, *999)
 
-                  CALL GATHER_MESH_COORDINATES(FIELD_COUPLED_MESH, COUPLED_DECOMPOSITION%COUPLED_MESH_COORDINATES,&
+                  CALL GATHER_MESH_COORDINATES(FIELD_COUPLED_MESH, COUPLED_DECOMPOSITION%COUPLED_MESH_COORDINATES, &
                     & ERR, Error, *999) ! Gather the geometric field of coupled mesh graph denoted by mesh_idx
 
                   CALL GET_MAXIMUM_EDGE_LENGTH(COUPLED_DECOMPOSITION, &
@@ -32375,7 +32371,7 @@ CONTAINS
                   DO vtx_dist_idx = 1, COUPLED_MESH_DECOMPOSITION%NUMBER_OF_DOMAINS-1
 
                    COUPLED_MESH_DECOMPOSITION%VTX_DIST(vtx_dist_idx) =  COUPLED_MESH_DECOMPOSITION%VTX_DIST(vtx_dist_idx-1) + &
-                    & INT(NUMBER_OF_NODES_IN_NEW_GRAPH/COUPLED_MESH_DECOMPOSITION%NUMBER_OF_DOMAINS, INTG)
+                     & INT(NUMBER_OF_NODES_IN_NEW_GRAPH/COUPLED_MESH_DECOMPOSITION%NUMBER_OF_DOMAINS, INTG)
 
                   END DO !vtx_dist_idx
 
@@ -32471,7 +32467,7 @@ CONTAINS
                                                                                !.. the merged vertex. In the report..
                                                                                !.. these set of loads are refered as ...
                                                                                !"actual computational load"  that each merged..
-                                                                               ! .. vertex represents. 
+                                                                               ! .. vertex represents.
 
                     END IF
                   END DO !node_idx
@@ -32514,10 +32510,10 @@ CONTAINS
 
                       CALL MPI_SEND(COUPLED_MESH_DECOMPOSITION%NODE_DOMAIN(&
                         & COUPLED_MESH_DECOMPOSITION%VTX_DIST(MY_COMPUTATIONAL_NODE):&
-                        & COUPLED_MESH_DECOMPOSITION%VTX_DIST(MY_COMPUTATIONAL_NODE+1)-1),&
+                        & COUPLED_MESH_DECOMPOSITION%VTX_DIST(MY_COMPUTATIONAL_NODE+1)-1), &
                         & SIZE(COUPLED_MESH_DECOMPOSITION%NODE_DOMAIN(&
                         & COUPLED_MESH_DECOMPOSITION%VTX_DIST(MY_COMPUTATIONAL_NODE):&
-                        & COUPLED_MESH_DECOMPOSITION%VTX_DIST(MY_COMPUTATIONAL_NODE+1)-1)),&
+                        & COUPLED_MESH_DECOMPOSITION%VTX_DIST(MY_COMPUTATIONAL_NODE+1)-1)), &
                         & MPI_INT, proc_idx_receive, MY_COMPUTATIONAL_NODE ,COMPUTATIONAL_ENVIRONMENT%MPI_COMM, Err)
 
 
@@ -32532,10 +32528,10 @@ CONTAINS
                       CALL MPI_RECV( &
                         & COUPLED_MESH_DECOMPOSITION%NODE_DOMAIN(&
                         & COUPLED_MESH_DECOMPOSITION%VTX_DIST(proc_idx_send):&
-                        & COUPLED_MESH_DECOMPOSITION%VTX_DIST(proc_idx_send+1)-1),&
+                        & COUPLED_MESH_DECOMPOSITION%VTX_DIST(proc_idx_send+1)-1), &
                         & SIZE(COUPLED_MESH_DECOMPOSITION%NODE_DOMAIN(&
                         & COUPLED_MESH_DECOMPOSITION%VTX_DIST(proc_idx_send):&
-                        & COUPLED_MESH_DECOMPOSITION%VTX_DIST(proc_idx_send+1)-1)),&
+                        & COUPLED_MESH_DECOMPOSITION%VTX_DIST(proc_idx_send+1)-1)), &
                         & MPI_INT, proc_idx_send,proc_idx_send, COMPUTATIONAL_ENVIRONMENT%MPI_COMM,STATUS, Err)
 
 
@@ -32617,9 +32613,7 @@ CONTAINS
     ELSE
      CALL FlagError("Coupled decomposition  is not associated.",ERR,ERROR,*999)
     ENDIF
-
     EXITS("COUPLED_DECOMPOSITION_FIXED_VERTEX_PARTITIONING.")
-
     RETURN
 999 ERRORSEXITS("COUPLED_DECOMPOSITION_FIXED_VERTEX_PARTITIO",err,error)
     RETURN 1
@@ -32655,7 +32649,7 @@ CONTAINS
 
         ! Initialize decomposition object.
         CALL DECOMPOSITIONS_INITIALISE(INTERFACE_MESH,ERR,ERROR,*999)
-        ! Start creating the interface object. 
+        ! Start creating the interface object.
         CALL DECOMPOSITION_CREATE_START(INTERFACE_DECOMPOSITION%USER_NUMBER,INTERFACE_MESH,INTERFACE_DECOMPOSITION,ERR,ERROR,*999)
         ! Activate vertex-based decomposition.
         CALL DECOMPOSITION_NODE_BASED_DECOMPOSITION_SET(INTERFACE_DECOMPOSITION, .TRUE. , ERR, error, *999)
@@ -32676,16 +32670,16 @@ CONTAINS
     ELSE
      CALL FlagError(" Interface Mesh  is not associated.",ERR,ERROR,*999)
     ENDIF
-   EXITS("DECOMPOSITION_INTERFACE_MESH_TRIVIAL_DECOMPOSITION_SET")
-   RETURN
+    EXITS("DECOMPOSITION_INTERFACE_MESH_TRIVIAL_DECOMPOSITION_SET")
+    RETURN
 999 ERRORSEXITS("DECOMPOSITION_INTERFACE_MESH_TRIVIAL_DECOMP",err,error)
-   RETURN 1
+    RETURN 1
 
   END SUBROUTINE DECOMPOSITION_INTERFACE_MESH_TRIVIAL_DECOMPOSITION_SET
 !===================================================================================================================!
  !> The following subroutine adds the geometric field information of the interface graph G_{i}  in COUPLED_DECOMPOSITION object.
 
-   SUBROUTINE COUPLED_DECOMPOSITION_ADD_INTERFACE(COUPLED_DECOMPOSITION,FIELD,ERR,ERROR,*)
+  SUBROUTINE COUPLED_DECOMPOSITION_ADD_INTERFACE(COUPLED_DECOMPOSITION,FIELD,ERR,ERROR,*)
 
   !Argument variables
     TYPE(COUPLED_DECOMPOSITION_TYPE), POINTER, INTENT(IN)      :: COUPLED_DECOMPOSITION !<A pointer to the coupled decomposition object.
@@ -32697,7 +32691,6 @@ CONTAINS
     TYPE(VARYING_STRING)                                       :: LOCAL_ERROR
 
     ENTERS("COUPLED_DECOMPOSITION_ADD_INTERFACE",ERR,ERROR,*999)
-
     IF(ASSOCIATED(COUPLED_DECOMPOSITION)) THEN
       IF(COUPLED_DECOMPOSITION%mesh_idx > 3) THEN
         LOCAL_ERROR="Coupled decomposition of user number "// &
@@ -32708,20 +32701,20 @@ CONTAINS
         COUPLED_DECOMPOSITION%COUPLED_FIELDS(3)%PTR => FIELD
       END IF
     ELSE
-     CALL FlagError(" Coupled decomposition is not associated.",ERR,ERROR,*999)
+      CALL FlagError(" Coupled decomposition is not associated.",ERR,ERROR,*999)
     ENDIF
-   EXITS("COUPLED_DECOMPOSITION_ADD_INTERFACE_MESH")
-   RETURN
+    EXITS("COUPLED_DECOMPOSITION_ADD_INTERFACE_MESH")
+    RETURN
 999 ERRORSEXITS("COUPLED_DECOMPOSITION_ADD_INTERFACE_MESH",err,error)
-   RETURN 1
+    RETURN 1
   END SUBROUTINE COUPLED_DECOMPOSITION_ADD_INTERFACE
 
 !===================================================================================================================!
  !> The following subroutine adds the geometric field information of the coupled mesh graph G_{i} in COUPLED_DECOMPOSITION object.
 
-   SUBROUTINE COUPLED_DECOMPOSITION_ADD_COUPLED_MESH(COUPLED_DECOMPOSITION,FIELD, ERR, ERROR,*)
+  SUBROUTINE COUPLED_DECOMPOSITION_ADD_COUPLED_MESH(COUPLED_DECOMPOSITION,FIELD, ERR, ERROR,*)
 
-  !Argument variables
+    !Argument variables
     TYPE(COUPLED_DECOMPOSITION_TYPE), POINTER, INTENT(IN)      :: COUPLED_DECOMPOSITION !<A pointer to the coupled decomposition object.
     TYPE(FIELD_TYPE), POINTER                                  :: FIELD !<A pointer to the field, representing geometric field of the coupled mesh graph.
     INTEGER(INTG), INTENT(OUT)                                 :: ERR !<The error code
@@ -32746,10 +32739,10 @@ CONTAINS
     ELSE
      CALL FlagError(" Coupled decomposition is not associated.",ERR,ERROR,*999)
     ENDIF
-   EXITS("COUPLED_DECOMPOSITION_ADD_COUPLED_MESH")
-   RETURN
+    EXITS("COUPLED_DECOMPOSITION_ADD_COUPLED_MESH")
+    RETURN
 999 ERRORSEXITS("COUPLED_DECOMPOSITION_ADD_COUPLED_MESH",err,error)
-   RETURN 1
+    RETURN 1
   END SUBROUTINE COUPLED_DECOMPOSITION_ADD_COUPLED_MESH
 !===================================================================================================================!
 !> The following subroutine initialize members of COUPLED_DECOMPOSITION object.
@@ -32757,41 +32750,41 @@ CONTAINS
   SUBROUTINE COUPLED_DECOMPOSITION_CREATE_START(COUPLED_DECOMPOSITION, &
     & COUPLED_DECOMSPOSITION_USER_NUMBER, ERR, Error, *)
 
-  !Argument variables
-   TYPE(COUPLED_DECOMPOSITION_TYPE), POINTER, INTENT(INOUT)  :: COUPLED_DECOMPOSITION !<A pointer to the coupled decomposition object.
-   INTEGER(INTG)                                             :: COUPLED_DECOMSPOSITION_USER_NUMBER !<A unique user number to indetify the  COUPLED_DECOMPOSITION object
-   INTEGER(INTG), INTENT(OUT)                                :: ERR !<The error code
-   TYPE(VARYING_STRING), INTENT(OUT)                         :: ERROR !<The error string
+   !Argument variables
+    TYPE(COUPLED_DECOMPOSITION_TYPE), POINTER, INTENT(INOUT)  :: COUPLED_DECOMPOSITION !<A pointer to the coupled decomposition object.
+    INTEGER(INTG)                                             :: COUPLED_DECOMSPOSITION_USER_NUMBER !<A unique user number to indetify the  COUPLED_DECOMPOSITION object
+    INTEGER(INTG), INTENT(OUT)                                :: ERR !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT)                         :: ERROR !<The error string
   !LOCAL Variables
-   TYPE(COUPLED_DECOMPOSITION_TYPE), POINTER                 :: NEW_COUPLED_DECOMPOSITION
-   TYPE(VARYING_STRING)                                      :: LOCAL_ERROR
+    TYPE(COUPLED_DECOMPOSITION_TYPE), POINTER                 :: NEW_COUPLED_DECOMPOSITION
+    TYPE(VARYING_STRING)                                      :: LOCAL_ERROR
 
-   ENTERS("COUPLED_DECOMPOSITION_CREATE_START",ERR,ERROR,*999)
+    ENTERS("COUPLED_DECOMPOSITION_CREATE_START",ERR,ERROR,*999)
 
-   IF(ASSOCIATED(COUPLED_DECOMPOSITION)) THEN
-     LOCAL_ERROR="Coupled Decomposition number "//&
-       & TRIM(NUMBER_TO_VSTRING(COUPLED_DECOMSPOSITION_USER_NUMBER,"*",ERR,ERROR))// &
-       & " has already been created."
-     CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
-   ELSE
+    IF(ASSOCIATED(COUPLED_DECOMPOSITION)) THEN
+      LOCAL_ERROR="Coupled Decomposition number "//&
+        & TRIM(NUMBER_TO_VSTRING(COUPLED_DECOMSPOSITION_USER_NUMBER,"*",ERR,ERROR))// &
+        & " has already been created."
+      CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
+    ELSE
 
-     ALLOCATE(NEW_COUPLED_DECOMPOSITION, STAT=ERR)
-     IF(ERR /=0) CALL FlagError(" Cannot allocate NEW_COUPLED_DECOMPOSITION.",ERR,ERROR,*999)
+      ALLOCATE(NEW_COUPLED_DECOMPOSITION, STAT=ERR)
+      IF(ERR /=0) CALL FlagError(" Cannot allocate NEW_COUPLED_DECOMPOSITION.",ERR,ERROR,*999)
 
-     NEW_COUPLED_DECOMPOSITION%mesh_idx = 1_INTG ! This member acts as an index for NEW_COUPLED_DECOMPOSITION%COUPLED_DECOMPOSITION(:).
+      NEW_COUPLED_DECOMPOSITION%mesh_idx = 1_INTG ! This member acts as an index for NEW_COUPLED_DECOMPOSITION%COUPLED_DECOMPOSITION(:).
 
-     ALLOCATE(NEW_COUPLED_DECOMPOSITION%COUPLED_FIELDS(3),STAT=ERR) ! The first two indices store the geometric field of the coupled mesh objects and the 3rd index store the geometric field of the interface mesh object.
-     IF(ERR /=0) CALL FlagError(" Cannot allocate COUPLED_MESH array.",ERR,ERROR,*999)
+      ALLOCATE(NEW_COUPLED_DECOMPOSITION%COUPLED_FIELDS(3),STAT=ERR) ! The first two indices store the geometric field of the coupled mesh objects and the 3rd index store the geometric field of the interface mesh object.
+      IF(ERR /=0) CALL FlagError(" Cannot allocate COUPLED_MESH array.",ERR,ERROR,*999)
 
-     NEW_COUPLED_DECOMPOSITION%USER_NUMBER=COUPLED_DECOMSPOSITION_USER_NUMBER
+      NEW_COUPLED_DECOMPOSITION%USER_NUMBER=COUPLED_DECOMSPOSITION_USER_NUMBER
 
-     COUPLED_DECOMPOSITION=>NEW_COUPLED_DECOMPOSITION
+      COUPLED_DECOMPOSITION=>NEW_COUPLED_DECOMPOSITION
 
-   ENDIF
-   EXITS("COUPLED_DECOMPOSITION_CREATE_START")
-   RETURN
+    ENDIF
+    EXITS("COUPLED_DECOMPOSITION_CREATE_START")
+    RETURN
 999 ERRORSEXITS("COUPLED_DECOMPOSITION_CREATE_START",err,error)
-   RETURN 1
+    RETURN 1
 
   END SUBROUTINE COUPLED_DECOMPOSITION_CREATE_START
 !====================================================================================!
@@ -32799,27 +32792,27 @@ CONTAINS
 
   SUBROUTINE COUPLED_DECOMPOSITION_CREATE_FINISH(COUPLED_DECOMPOSITION, ERR, Error, *)
 
-   !Argument variables
-   TYPE(COUPLED_DECOMPOSITION_TYPE), POINTER, INTENT(INOUT)  :: COUPLED_DECOMPOSITION !<Coupled decomposition object.
-   INTEGER(INTG), INTENT(OUT)                                :: ERR !<The error code.
-   TYPE(VARYING_STRING), INTENT(OUT)                         :: ERROR !<The error string.
-   !LoCAL Variables
-   TYPE(MESH_TYPE), POINTER   :: COUPLED_MESH_1,COUPLED_MESH_2,INTERFACE_MESH
-   TYPE(FIELD_TYPE), POINTER  :: FIELD_COUPLED_MESH_1,FIELD_COUPLED_MESH_2,FIELD_INTERFACE_MESH
-   TYPE(DECOMPOSITION_TYPE), POINTER :: DECOMPOSITION_COUPLED_MESH_1, DECOMPOSITION_COUPLED_MESH_2, &
-     & DECOMPOSITION_INTERFACE_MESH
-   INTEGER(INTG)  ::  MY_COMPUTATIONAL_NODE
+    !Argument variables
+    TYPE(COUPLED_DECOMPOSITION_TYPE), POINTER, INTENT(INOUT)  :: COUPLED_DECOMPOSITION !<Coupled decomposition object.
+    INTEGER(INTG), INTENT(OUT)                                :: ERR !<The error code.
+    TYPE(VARYING_STRING), INTENT(OUT)                         :: ERROR !<The error string.
+    !LoCAL Variables
+    TYPE(MESH_TYPE), POINTER   :: COUPLED_MESH_1,COUPLED_MESH_2,INTERFACE_MESH
+    TYPE(FIELD_TYPE), POINTER  :: FIELD_COUPLED_MESH_1,FIELD_COUPLED_MESH_2,FIELD_INTERFACE_MESH
+    TYPE(DECOMPOSITION_TYPE), POINTER :: DECOMPOSITION_COUPLED_MESH_1, DECOMPOSITION_COUPLED_MESH_2, &
+      & DECOMPOSITION_INTERFACE_MESH
+    INTEGER(INTG)  ::  MY_COMPUTATIONAL_NODE
 
 
-   ENTERS("COUPLED_DECOMPOSITION_CREATE_START",ERR,ERROR,*999)
+    ENTERS("COUPLED_DECOMPOSITION_CREATE_START",ERR,ERROR,*999)
 
-   IF(ASSOCIATED(COUPLED_DECOMPOSITION)) THEN
+    IF(ASSOCIATED(COUPLED_DECOMPOSITION)) THEN
 
-     FIELD_COUPLED_MESH_1=>COUPLED_DECOMPOSITION%COUPLED_FIELDS(1)%PTR
-     IF(ASSOCIATED(FIELD_COUPLED_MESH_1)) THEN
+      FIELD_COUPLED_MESH_1=>COUPLED_DECOMPOSITION%COUPLED_FIELDS(1)%PTR
+      IF(ASSOCIATED(FIELD_COUPLED_MESH_1)) THEN
 
-       FIELD_COUPLED_MESH_2=>COUPLED_DECOMPOSITION%COUPLED_FIELDS(2)%PTR
-       IF(ASSOCIATED(FIELD_COUPLED_MESH_2)) THEN
+        FIELD_COUPLED_MESH_2=>COUPLED_DECOMPOSITION%COUPLED_FIELDS(2)%PTR
+        IF(ASSOCIATED(FIELD_COUPLED_MESH_2)) THEN
 
           FIELD_INTERFACE_MESH=>COUPLED_DECOMPOSITION%COUPLED_FIELDS(3)%PTR
           IF(ASSOCIATED(FIELD_INTERFACE_MESH)) THEN
@@ -32861,41 +32854,41 @@ CONTAINS
 
                         COUPLED_DECOMPOSITION%mesh_idx = 1  !Reset the value
 
-                        ELSE
-                          CALL FlagError("Interface mesh is not associated.",ERR,ERROR,*999)
-                        END IF
                       ELSE
-                        CALL FlagError("Coupled mesh 2 is not associated.",ERR,ERROR,*999)
+                        CALL FlagError("Interface mesh is not associated.",ERR,ERROR,*999)
                       END IF
-                   ELSE
-                     CALL FlagError("Coupled mesh 1 is not associated.",ERR,ERROR,*999)
-                   END IF
-                 ELSE
-                   CALL FlagError("Decomposition of interface mesh is not associated.",ERR,ERROR,*999)
-                 END IF
+                    ELSE
+                      CALL FlagError("Coupled mesh 2 is not associated.",ERR,ERROR,*999)
+                    END IF
+                  ELSE
+                    CALL FlagError("Coupled mesh 1 is not associated.",ERR,ERROR,*999)
+                  END IF
+                ELSE
+                  CALL FlagError("Decomposition of interface mesh is not associated.",ERR,ERROR,*999)
+                END IF
               ELSE
-                 CALL FlagError("Decomposition of coupled mesh 2  is not associated.",ERR,ERROR,*999)
+                CALL FlagError("Decomposition of coupled mesh 2  is not associated.",ERR,ERROR,*999)
               END IF
             ELSE
               CALL FlagError("Decomposition of coupled mesh 1 is not associated.",ERR,ERROR,*999)
             END IF
-         ELSE
-           CALL FlagError("Geometric Field of Interface mesh is not associated.",ERR,ERROR,*999)
-         END IF
-       ELSE
-         CALL FlagError("Geometric Field of coupled mesh 2 is not associated.",ERR,ERROR,*999)
-       END IF
-     ELSE
-       CALL FlagError("Geometric Field of coupled mesh 1 is not associated.",ERR,ERROR,*999)
-     END IF
-   ELSE
-     CALL FlagError("Coupled decomposition is not associated.",ERR,ERROR,*999)
-   END IF
+          ELSE
+            CALL FlagError("Geometric Field of Interface mesh is not associated.",ERR,ERROR,*999)
+          END IF
+        ELSE
+          CALL FlagError("Geometric Field of coupled mesh 2 is not associated.",ERR,ERROR,*999)
+        END IF
+      ELSE
+        CALL FlagError("Geometric Field of coupled mesh 1 is not associated.",ERR,ERROR,*999)
+      END IF
+    ELSE
+      CALL FlagError("Coupled decomposition is not associated.",ERR,ERROR,*999)
+    END IF
 
-   EXITS("COUPLED_DECOMPOSITION_CREATE_FINISH.")
-   RETURN
+    EXITS("COUPLED_DECOMPOSITION_CREATE_FINISH.")
+    RETURN
 999 ERRORSEXITS("COUPLED_DECOMPOSITION_CREATE_FINISH.",ERR,ERROR)
-   RETURN 1
+    RETURN 1
 
   END SUBROUTINE COUPLED_DECOMPOSITION_CREATE_FINISH
 
@@ -32905,77 +32898,76 @@ CONTAINS
 
   SUBROUTINE GATHER_MESH_COORDINATES(GEOMETRIC_FIELD, MESH_COORDINATES,  ERR, Error, * )
 
-   !Argument variables
-   TYPE(FIELD_TYPE), POINTER, INTENT(INOUT)             :: GEOMETRIC_FIELD ! A pointer to the geometric field of the mesh whose coordinates are to be gathered.
-   REAL(RP), INTENT(OUT), ALLOCATABLE                   :: MESH_COORDINATES(:,:) ! Data structure where the geometric field coordinates are gathered.
-   INTEGER(INTG), INTENT(OUT)                           :: ERR !<The error code
-   TYPE(VARYING_STRING), INTENT(OUT)                    :: ERROR !<The error string
+    !Argument variables
+    TYPE(FIELD_TYPE), POINTER, INTENT(INOUT)  :: GEOMETRIC_FIELD ! A pointer to the geometric field of the mesh whose coordinates are to be gathered.
+    REAL(RP), INTENT(OUT), ALLOCATABLE :: MESH_COORDINATES(:,:) ! Data structure where the geometric field coordinates are gathered.
+    INTEGER(INTG), INTENT(OUT)  :: ERR !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT)    :: ERROR !<The error string
 
-   !Local variables
-   INTEGER(INTG)                                        :: component_idx, DOMAIN_NUMBER, node_idx, NUMBER_OF_FIELD_COMPONENTS, &
-     & MY_COMPUTATIONAL_NODE
-   TYPE(MESH_TYPE) , POINTER                            :: MESH
-   TYPE(DECOMPOSITION_TYPE) , POINTER                   :: DECOMPOSITION
-   TYPE(FIELD_VARIABLE_TYPE), POINTER                   :: FIELD_VARIABLE_MESH
-   REAL(RP), ALLOCATABLE                                :: MESH_COORDINATES_NEW(:)
+    !Local variables
+    INTEGER(INTG)  :: component_idx, DOMAIN_NUMBER, node_idx, NUMBER_OF_FIELD_COMPONENTS, MY_COMPUTATIONAL_NODE
+    TYPE(MESH_TYPE) , POINTER                            :: MESH
+    TYPE(DECOMPOSITION_TYPE) , POINTER                   :: DECOMPOSITION
+    TYPE(FIELD_VARIABLE_TYPE), POINTER                   :: FIELD_VARIABLE_MESH
+    REAL(RP), ALLOCATABLE                                :: MESH_COORDINATES_NEW(:)
 
-   ENTERS("GATHER_MESH_COORDINATES(MESH, MESH_COORDIANTES",ERR,ERROR,*999)
+    ENTERS("GATHER_MESH_COORDINATES(MESH, MESH_COORDIANTES",ERR,ERROR,*999)
 
-   IF(ASSOCIATED(GEOMETRIC_FIELD)) THEN
-     DECOMPOSITION=>GEOMETRIC_FIELD%DECOMPOSITION
-     IF(ASSOCIATED(DECOMPOSITION)) THEN
-       MESH=>DECOMPOSITION%MESH
-       IF(ASSOCIATED(MESH)) THEN
-         FIELD_VARIABLE_MESH=>GEOMETRIC_FIELD%VARIABLE_TYPE_MAP(1)%PTR ! one because every geometric field has one variable
-         IF(ASSOCIATED(FIELD_VARIABLE_MESH)) THEN
+    IF(ASSOCIATED(GEOMETRIC_FIELD)) THEN
+      DECOMPOSITION=>GEOMETRIC_FIELD%DECOMPOSITION
+      IF(ASSOCIATED(DECOMPOSITION)) THEN
+        MESH=>DECOMPOSITION%MESH
+        IF(ASSOCIATED(MESH)) THEN
+          FIELD_VARIABLE_MESH=>GEOMETRIC_FIELD%VARIABLE_TYPE_MAP(1)%PTR ! one because every geometric field has one variable
+          IF(ASSOCIATED(FIELD_VARIABLE_MESH)) THEN
 
-           MY_COMPUTATIONAL_NODE=COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR)
-           NUMBER_OF_FIELD_COMPONENTS = GEOMETRIC_FIELD%VARIABLES(1)%NUMBER_OF_COMPONENTS !Number of components of a geometric field.
-           ALLOCATE(MESH_COORDINATES(MESH%TOPOLOGY(1)%PTR%NODES%NUmberOfNOdes,3), STAT=ERR)
-           IF(ERR/=0)   CALL FlagError(" Cannot allocate MESH_COORDINATES.",ERR,ERROR,*999)
-           MESH_COORDINATES=0
-           DO node_idx = 1, MESH%TOPOLOGY(1)%PTR%NODES%NUmberOfNOdes
+            MY_COMPUTATIONAL_NODE=COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR)
+            NUMBER_OF_FIELD_COMPONENTS = GEOMETRIC_FIELD%VARIABLES(1)%NUMBER_OF_COMPONENTS !Number of components of a geometric field.
+            ALLOCATE(MESH_COORDINATES(MESH%TOPOLOGY(1)%PTR%NODES%NUmberOfNOdes,3), STAT=ERR)
+            IF(ERR/=0)   CALL FlagError(" Cannot allocate MESH_COORDINATES.",ERR,ERROR,*999)
+            MESH_COORDINATES=0
+            DO node_idx = 1, MESH%TOPOLOGY(1)%PTR%NODES%NUmberOfNOdes
 
-             CALL DECOMPOSITION_NODE_DOMAIN_GET(DECOMPOSITION,node_idx,1_INTG, &
-               & DOMAIN_NUMBER,ERR,ERROR,*999)
+              CALL DECOMPOSITION_NODE_DOMAIN_GET(DECOMPOSITION,node_idx,1_INTG, &
+                & DOMAIN_NUMBER,ERR,ERROR,*999)
 
-             IF(DOMAIN_NUMBER==MY_COMPUTATIONAL_NODE)  THEN
+              IF(DOMAIN_NUMBER==MY_COMPUTATIONAL_NODE)  THEN
 
-               DO component_idx=1,NUMBER_OF_FIELD_COMPONENTS
-                 CALL FIELD_PARAMETER_SET_GET_NODE(GEOMETRIC_FIELD,FIELD_VARIABLE_MESH%VARIABLE_TYPE, &
-                   & 1_INTG, 1_INTG, 1_INTG, &
-                   & node_idx,component_idx,MESH_COORDINATES(node_idx,component_idx),ERR,ERROR,*999)
-               END DO ! component_idx
-             END IF ! IF(DOMAIN_NUMBER==MY_COMPUTATIONAL_NODE)
-           END DO ! node_idx
+                DO component_idx=1,NUMBER_OF_FIELD_COMPONENTS
+                  CALL FIELD_PARAMETER_SET_GET_NODE(GEOMETRIC_FIELD,FIELD_VARIABLE_MESH%VARIABLE_TYPE, &
+                    & 1_INTG, 1_INTG, 1_INTG, &
+                    & node_idx,component_idx,MESH_COORDINATES(node_idx,component_idx),ERR,ERROR,*999)
+                END DO ! component_idx
+              END IF ! IF(DOMAIN_NUMBER==MY_COMPUTATIONAL_NODE)
+            END DO ! node_idx
 
-           ALLOCATE(MESH_COORDINATES_NEW(MESH%TOPOLOGY(1)%PTR%NODES%NUmberOfNOdes*3), STAT=ERR)
-           IF(ERR/=0)   CALL FlagError(" Cannot allocate MESH_COORDINATES_NEW.",ERR,ERROR,*999)
-           MESH_COORDINATES_NEW = 0.
+            ALLOCATE(MESH_COORDINATES_NEW(MESH%TOPOLOGY(1)%PTR%NODES%NUmberOfNOdes*3), STAT=ERR)
+            IF(ERR/=0)   CALL FlagError(" Cannot allocate MESH_COORDINATES_NEW.",ERR,ERROR,*999)
+            MESH_COORDINATES_NEW = 0.
 
+            CALL MPI_ALLREDUCE(MESH_COORDINATES, &
+              & MESH_COORDINATES_NEW, MESH%TOPOLOGY(1)%PTR%NODES%NUmberOfNOdes*3, &
+              & MPI_DOUBLE_PRECISION, MPI_SUM, MPI_COMM_WORLD,Err)
 
-           CALL MPI_ALLREDUCE(MESH_COORDINATES, &
-             & MESH_COORDINATES_NEW, MESH%TOPOLOGY(1)%PTR%NODES%NUmberOfNOdes*3, &
-             & MPI_DOUBLE_PRECISION, MPI_SUM, MPI_COMM_WORLD,Err)
+            MESH_COORDINATES = 0.
+            MESH_COORDINATES = RESHAPE(MESH_COORDINATES_NEW, (/MESH%TOPOLOGY(1)%PTR%NODES%NUmberOfNOdes,3/))
 
-           MESH_COORDINATES = 0.
-           MESH_COORDINATES = RESHAPE(MESH_COORDINATES_NEW, (/MESH%TOPOLOGY(1)%PTR%NODES%NUmberOfNOdes,3/))
+            DEALLOCATE(MESH_COORDINATES_NEW)
 
-           DEALLOCATE(MESH_COORDINATES_NEW)
-
-           ELSE
-             CALL FlagError(" Field variable is not associated.",ERR,ERROR,*999)
-           ENDIF
-         ELSE
-           CALL FlagError(" Mesh is not associated.",ERR,ERROR,*999)
-         ENDIF
-       ELSE
-         CALL FlagError(" Decomposition is not associated.",ERR,ERROR,*999)
-       ENDIF
-     ELSE
-       CALL FlagError(" Geometric field is not associated.",ERR,ERROR,*999)
-     ENDIF
-     RETURN
+          ELSE
+            CALL FlagError(" Field variable is not associated.",ERR,ERROR,*999)
+          ENDIF
+        ELSE
+          CALL FlagError(" Mesh is not associated.",ERR,ERROR,*999)
+        ENDIF
+      ELSE
+        CALL FlagError(" Decomposition is not associated.",ERR,ERROR,*999)
+      ENDIF
+    ELSE
+      CALL FlagError(" Geometric field is not associated.",ERR,ERROR,*999)
+    ENDIF
+    EXITS("GATHER_MESH_COORDINATES.")
+    RETURN
 999 ERRORSEXITS("GATHER_MESH_COORDINATES.",ERR,ERROR)
     RETURN 1
 
@@ -33022,7 +33014,6 @@ CONTAINS
     ENDIF
 
     EXITS("DECOMPOSITION_ASSIGN_DECOMPOSITION_FIELD")
-
     RETURN
 999 ERRORSEXITS("DECOMPOSITION_ASSIGN_DECOMPOSITION_FIELD",ERR,ERROR)
     RETURN 1
@@ -33074,7 +33065,7 @@ CONTAINS
           END DO !mapping_idx
           ! Finish creating the decomposition object.
           CALL DECOMPOSITION_CREATE_FINISH(NEW_DECOMPOSITION, ERR, Error, *999)
-           
+
           COUPLED_DECOMPOSITION%mesh_idx = COUPLED_DECOMPOSITION%mesh_idx + 1
           ! Assign the new decomposition to the decomposition object.
           DECOMPOSITION=>NEW_DECOMPOSITION
@@ -33127,7 +33118,7 @@ CONTAINS
 !====================================================================================================
  !> The following subroutine identifies the vertices to impose the fixed vertex partitioning o.
 
- SUBROUTINE COUPLED_MESH_VERTICES_TO_IMPOSE_FIXED_PARTITIONING(COUPLED_DECOMPOSITION,ERR,ERROR,*)
+  SUBROUTINE COUPLED_MESH_VERTICES_TO_IMPOSE_FIXED_PARTITIONING(COUPLED_DECOMPOSITION,ERR,ERROR,*)
 
     !Argument variables
     TYPE(COUPLED_DECOMPOSITION_TYPE), POINTER, INTENT(IN) :: COUPLED_DECOMPOSITION !< Coupled decomposition type objects.
@@ -33157,9 +33148,9 @@ CONTAINS
 
         ! This subroutine changes the values of COUPLED_DECOMPOSITION%INTER_EDGES such that the new...
         ! structure of COUPLED_DECOMPOSITION%INTER_EDGES will consist of NUMBER_OF_COMPUTATIONAL_NODES...
-        ! number of columns and COUPLED_DECOMPOSITION%INTER_EDGES(:,subdomain_idx) will consist of all the vertices of .. 
+        ! number of columns and COUPLED_DECOMPOSITION%INTER_EDGES(:,subdomain_idx) will consist of all the vertices of ..
         ! the coupled mesh graph G_i that are suppose to belong to subdomain_idx.
-  
+
         TEMP_ARRAY =  0
         sub_domain_counter= 1
 
@@ -33182,7 +33173,7 @@ CONTAINS
         END DO !proc_idx
 
         DEALLOCATE(COUPLED_DECOMPOSITION%INTER_EDGES) ! Store the vertices in COUPLED_DECOMPOSITION%INTER_EDGES data structure ...
-                                                      !... such that !COUPLED_DECOMPOSITION%INTER_EDGES(:,PROC_idx) contains all  ... 
+                                                      !... such that !COUPLED_DECOMPOSITION%INTER_EDGES(:,PROC_idx) contains all  ...
                                                       !.... the vertices that are assigned sub-domain PROC_idx
         ALLOCATE(COUPLED_DECOMPOSITION%INTER_EDGES(SIZE(TEMP_ARRAY,1),TOTAL_COMPUTATIONAL_NODES))
         COUPLED_DECOMPOSITION%INTER_EDGES = TEMP_ARRAY
@@ -33203,7 +33194,7 @@ CONTAINS
 !=====================================================================================================================
   !>This subroutine builds mapping between numbering of a vertices of the new graph G_{i,merged} and the orginal graph G_i.
 
- SUBROUTINE COUPLED_DECOMPOSITION_NEW_TO_OLD_VERTEX_MAPPING(COUPLED_DECOMPOSITION, NEW_TO_OLD_INDEX_MAPPING, ERR,ERROR,*)
+  SUBROUTINE COUPLED_DECOMPOSITION_NEW_TO_OLD_VERTEX_MAPPING(COUPLED_DECOMPOSITION, NEW_TO_OLD_INDEX_MAPPING, ERR,ERROR,*)
 
     !Argument variables
     TYPE(COUPLED_DECOMPOSITION_TYPE), POINTER, INTENT(IN) :: COUPLED_DECOMPOSITION !<Coupled decomposition type objects.
@@ -33235,19 +33226,19 @@ CONTAINS
 
           DO old_vertex_idx = 1, COUPLED_MESH%TOPOLOGY(1)%PTR%NODES%numberOfNOdes
 
-            FLAG1= .FALSE. 
+            FLAG1= .FALSE.
             FLAG2= .FALSE.
             NEW_TO_OLD_INDEX_MAPPING(old_vertex_idx,1) = old_vertex_idx
-  
-            ! proc_idx represents a sub-domain. 
-            DO proc_idx = 1, NUMBER_OF_COMPUTATIONAL_NODES 
+
+            ! proc_idx represents a sub-domain.
+            DO proc_idx = 1, NUMBER_OF_COMPUTATIONAL_NODES
 
               DO inter_edge_idx = 1, SIZE(COUPLED_DECOMPOSITION%INTER_EDGES,1)
 
                 IF(COUPLED_DECOMPOSITION%INTER_EDGES(inter_edge_idx,proc_idx)==old_vertex_idx) THEN !If old_vertex_idx is one of the vertices to be merged
                   FLAG2= .TRUE.
                   IF(inter_edge_idx==1) THEN ! In this case the Id would of old_vertex_idx would be the same as the id of the first merged vertex that is supposed to go in ...
-                    FLAG1=.FALSE.  !.... sub-domain proc_idx. 
+                    FLAG1=.FALSE.  !.... sub-domain proc_idx.
                   ELSE
                     FLAG1=.TRUE.
                   END IF
@@ -33264,9 +33255,9 @@ CONTAINS
               NEW_TO_OLD_INDEX_MAPPING(old_vertex_idx,2)=new_vertex_idx
               new_vertex_idx = new_vertex_idx + 1
 
-            ELSE ! If old_vertex_idx  is suppose to be a merged vertex belonging to sub-domain proc_idx then .... 
+            ELSE ! If old_vertex_idx  is suppose to be a merged vertex belonging to sub-domain proc_idx then ....
                  ! ... assign old_vertex_idx the Id of the new id of the merged vertex.
-  
+
               NEW_TO_OLD_INDEX_MAPPING(old_vertex_idx,2)= &
                 & NEW_TO_OLD_INDEX_MAPPING(COUPLED_DECOMPOSITION%INTER_EDGES(1,proc_idx),2)
 
@@ -33275,7 +33266,7 @@ CONTAINS
 
         ELSE
           CALL FlagError("Coupled mesh decomposition is not associated.",ERR,ERROR,*999)
-        ENDIF  
+        ENDIF
       ELSE
         CALL FlagError("Coupled mesh decomposition is not associated.",ERR,ERROR,*999)
       ENDIF
@@ -33292,17 +33283,17 @@ CONTAINS
   !>The following subroutine build adjacencies of the new coupled mesh graph G_{i,merged}.
 
   SUBROUTINE COUPLED_DECOMPOSITION_GET_NEW_GRAPH(COUPLED_DECOMPOSITION, &
-   & NEW_TO_OLD_INDEX_MAPPING, ERR, ERROR,* )
+    & NEW_TO_OLD_INDEX_MAPPING, ERR, ERROR,* )
 
     TYPE(COUPLED_DECOMPOSITION_TYPE), POINTER, INTENT(INOUT) :: COUPLED_DECOMPOSITION !<Coupled decomposition type objects.
     INTEGER(INTG), INTENT(IN)  :: NEW_TO_OLD_INDEX_MAPPING(:,:) !<NEW_TO_OLD_INDEX_MAPPING(old_vertex_idx,:). Cotains one-to-one mapping between new vertex ids and old vertex ids
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
-    INTEGER(INTG)    :: index_start, index_end, inter_edge_idx, idx, LOC, & 
-      & MAXIMUM_ADJACECNY_SIZE_OF_NEW_GRAPH,MY_COMPUTATIONAL_NODE, NUMBER_OF_COMPUTATIONAL_NODES, node_idx, & 
+    INTEGER(INTG)    :: index_start, index_end, inter_edge_idx, idx, LOC, &
+      & MAXIMUM_ADJACECNY_SIZE_OF_NEW_GRAPH,MY_COMPUTATIONAL_NODE, NUMBER_OF_COMPUTATIONAL_NODES, node_idx, &
       & NODES_TO_RETAIN, NODES_TO_COLLAPSE, NUMBER_OF_ROWS_TO_DELETE, NUMBER_OF_NODES_IN_COUPLED_MESH_GRAPH, &
-      & NUMBER_OF_NODES_SUROUNDING_MERGED_NODE, NUMBER_OF_SURROUNDING_NODES, proc_idx, surrounding_node_idx, & 
+      & NUMBER_OF_NODES_SUROUNDING_MERGED_NODE, NUMBER_OF_SURROUNDING_NODES, proc_idx, surrounding_node_idx, &
       & SURROUNDING_NODE
     INTEGER(INTG), ALLOCATABLE    :: ADJACECNY_SIZE_OF_THE_GRAPH(:),TEMP_ARRAY(:), TEMP_ARRAY_2D(:,:)
     TYPE(MESH_TYPE), POINTER      :: COUPLED_MESH
@@ -33315,19 +33306,19 @@ CONTAINS
         NUMBER_OF_COMPUTATIONAL_NODES=COMPUTATIONAL_NODES_NUMBER_GET(ERR,ERROR)
         MY_COMPUTATIONAL_NODE=COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR)
 
-        ! At first allocate the COUPLED_DECOMPOSITION%MERGED_GRAPH_NODES to size equal to number of nodes in the original coupld mesh graph G_i. 
-        NUMBER_OF_NODES_IN_COUPLED_MESH_GRAPH = SIZE(COUPLED_MESH%TOPOLOGY(1)%PTR%NODES%NODES,1) 
+        ! At first allocate the COUPLED_DECOMPOSITION%MERGED_GRAPH_NODES to size equal to number of nodes in the original coupld mesh graph G_i.
+        NUMBER_OF_NODES_IN_COUPLED_MESH_GRAPH = SIZE(COUPLED_MESH%TOPOLOGY(1)%PTR%NODES%NODES,1)
         ALLOCATE(COUPLED_DECOMPOSITION%MERGED_GRAPH_NODES(NUMBER_OF_NODES_IN_COUPLED_MESH_GRAPH), STAT=ERR)
         IF(ERR/=0) CALL FlagError("MERGED_GRAPH_NODES cannot be allocated.",ERR,ERROR,*999)
        ! Store adjacecy of the original graph in COUPLED_DECOMPOSITION%MERGED_GRAPH_NODES.
         DO node_idx = 1, SIZE(COUPLED_MESH%TOPOLOGY(1)%PTR%NODES%NODES,1)
 
           NUMBER_OF_SURROUNDING_NODES=SIZE(COUPLED_MESH%TOPOLOGY(1)%PTR%NODES%NODES(node_idx)%surroundingNOdes,1)
-          ALLOCATE(COUPLED_DECOMPOSITION%MERGED_GRAPH_NODES & 
+          ALLOCATE(COUPLED_DECOMPOSITION%MERGED_GRAPH_NODES &
             & (node_idx)%surroundingNodes(NUMBER_OF_SURROUNDING_NODES), STAT=ERR)
           IF(ERR/=0) CALL FlagError("SurroundingNodes cannot be allocated.",ERR,ERROR,*999)
- 
-          COUPLED_DECOMPOSITION%MERGED_GRAPH_NODES(node_idx)%surroundingNodes =  & 
+
+          COUPLED_DECOMPOSITION%MERGED_GRAPH_NODES(node_idx)%surroundingNodes =  &
             & COUPLED_MESH%TOPOLOGY(1)%PTR%NODES%NODES(node_idx)%surroundingNOdes
 
         END DO !node_idx
@@ -33335,20 +33326,20 @@ CONTAINS
         DO proc_idx = 1,  NUMBER_OF_COMPUTATIONAL_NODES
 
           NODES_TO_RETAIN = COUPLED_DECOMPOSITION%INTER_EDGES(1,proc_idx)
- 
+
           ! First determine number of nodes surrounding each merged node.
-          NUMBER_OF_NODES_SUROUNDING_MERGED_NODE = 0 
+          NUMBER_OF_NODES_SUROUNDING_MERGED_NODE = 0
 
           DO inter_edge_idx = 2 , SIZE(COUPLED_DECOMPOSITION%INTER_EDGES,1)
 
             NODES_TO_COLLAPSE = COUPLED_DECOMPOSITION%INTER_EDGES(inter_edge_idx,proc_idx)
 
-            NUMBER_OF_NODES_SUROUNDING_MERGED_NODE= NUMBER_OF_NODES_SUROUNDING_MERGED_NODE + & 
+            NUMBER_OF_NODES_SUROUNDING_MERGED_NODE= NUMBER_OF_NODES_SUROUNDING_MERGED_NODE + &
               & SIZE(COUPLED_DECOMPOSITION%MERGED_GRAPH_NODES(NODES_TO_RETAIN)%surroundingNOdes,1)+1
 
             IF(NODES_TO_COLLAPSE/=0) THEN
 
-              NUMBER_OF_NODES_SUROUNDING_MERGED_NODE=NUMBER_OF_NODES_SUROUNDING_MERGED_NODE + & 
+              NUMBER_OF_NODES_SUROUNDING_MERGED_NODE=NUMBER_OF_NODES_SUROUNDING_MERGED_NODE + &
                 & SIZE(COUPLED_DECOMPOSITION%MERGED_GRAPH_NODES(NODES_TO_COLLAPSE)%surroundingNOdes,1)-1
 
             END IF
@@ -33388,7 +33379,6 @@ CONTAINS
           COUPLED_DECOMPOSITION%MERGED_GRAPH_NODES(NODES_TO_RETAIN)%surroundingNOdes = PACK(TEMP_ARRAY, TEMP_ARRAY/=0)
 
           DEALLOCATE(TEMP_ARRAY)
-           
         END DO !proc_idx
 
         ! In step 2, try to nullify nodes that are supposed to be merged.
@@ -33410,8 +33400,7 @@ CONTAINS
           ADJACECNY_SIZE_OF_THE_GRAPH(node_idx)=SIZE(COUPLED_DECOMPOSITION%MERGED_GRAPH_NODES(node_idx)%surroundingNOdes,1)
         END DO ! node_idx
 
-        MAXIMUM_ADJACECNY_SIZE_OF_NEW_GRAPH = MAXVAL(ADJACECNY_SIZE_OF_THE_GRAPH) 
-      
+        MAXIMUM_ADJACECNY_SIZE_OF_NEW_GRAPH = MAXVAL(ADJACECNY_SIZE_OF_THE_GRAPH)
         NUMBER_OF_ROWS_TO_DELETE = 0
 
         DO node_idx = 1, SIZE(COUPLED_DECOMPOSITION%MERGED_GRAPH_NODES,1)
@@ -33420,8 +33409,8 @@ CONTAINS
             IF(COUPLED_DECOMPOSITION%MERGED_GRAPH_NODES(node_idx)%surroundingNOdes(1) == -1)  THEN
 
               NUMBER_OF_ROWS_TO_DELETE = NUMBER_OF_ROWS_TO_DELETE + 1     !Number of rows to delete refers to the vertices of coupeld mesh grph G_i that are to be merged to obtain the ...
-                                                                          ! ... new coupled mesh graph G_{i,merged}. In other words number of vertices in G_{i,merged} would be  ... 
-                                                                          ! ..."NUMBER_OF_ROWS_TO_DELETE" less than the nodes of G_i.  
+                                                                          ! ... new coupled mesh graph G_{i,merged}. In other words number of vertices in G_{i,merged} would be  ...
+                                                                          ! ..."NUMBER_OF_ROWS_TO_DELETE" less than the nodes of G_i.
             END IF
           END IF
 
@@ -33429,7 +33418,7 @@ CONTAINS
 
         IF(ALLOCATED(TEMP_ARRAY_2D)) DEALLOCATE(TEMP_ARRAY_2D)
         ALLOCATE(TEMP_ARRAY_2D(SIZE(COUPLED_DECOMPOSITION%MERGED_GRAPH_NODES,1)-NUMBER_OF_ROWS_TO_DELETE, &
-          & MAXIMUM_ADJACECNY_SIZE_OF_NEW_GRAPH), STAT=ERR) 
+          & MAXIMUM_ADJACECNY_SIZE_OF_NEW_GRAPH), STAT=ERR)
         IF(ERR/=0) CALL FlagError("Unable to allocate TEMP_ARRAY_2D array.",ERR,ERROR,*999)
 
         TEMP_ARRAY_2D = 0 ! This array temporarily stores the new node adjacencies.
@@ -33498,11 +33487,11 @@ CONTAINS
 
         DO node_idx = 1, SIZE(COUPLED_DECOMPOSITION%MERGED_GRAPH_NODES,1)
 
-          ALLOCATE(TEMP_ARRAY(SIZE(PACK(COUPLED_DECOMPOSITION%MERGED_GRAPH_NODES(node_idx)%surroundingNOdes,&
+          ALLOCATE(TEMP_ARRAY(SIZE(PACK(COUPLED_DECOMPOSITION%MERGED_GRAPH_NODES(node_idx)%surroundingNOdes, &
             & COUPLED_DECOMPOSITION%MERGED_GRAPH_NODES(node_idx)%surroundingNOdes /=0))), STAT=ERR)
           IF(ERR/=0) CALL FlagError("TEMP_ARRAY cannot be allocated.",ERR,ERROR,*999)
 
-          TEMP_ARRAY = PACK(COUPLED_DECOMPOSITION%MERGED_GRAPH_NODES(node_idx)%surroundingNOdes,&
+          TEMP_ARRAY = PACK(COUPLED_DECOMPOSITION%MERGED_GRAPH_NODES(node_idx)%surroundingNOdes, &
             & COUPLED_DECOMPOSITION%MERGED_GRAPH_NODES(node_idx)%surroundingNOdes /=0)
 
           DEALLOCATE(COUPLED_DECOMPOSITION%MERGED_GRAPH_NODES(node_idx)%surroundingNOdes)
